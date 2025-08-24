@@ -20,10 +20,26 @@ Your sign-off certifies the DCO at https://developercertificate.org/
 
 1. Open an Issue to discuss ideas, bugs, or features
 2. For larger changes, start with an RFC Issue to converge on design
-3. Create a branch from `main` and make focused changes with clear rationale
-4. Ensure docs are updated when behavior or interfaces change
-5. Use conventional commits (see below)
-6. Submit a PR with context and checklists
+3. **Fork the repository** and create a feature branch from `develop`
+4. Make focused changes with clear rationale and ensure docs are updated
+5. Use conventional commits (see below) and sign all commits with DCO
+6. Submit a PR to merge your feature branch into `develop`
+7. Address review feedback and ensure all status checks pass
+
+## Branch workflow
+
+We use a **develop/main** branching strategy with strict protection rules:
+
+- **`develop`** (default): Integration branch for new features and changes
+- **`main`**: Stable branch for releases, merged from develop
+
+**All changes require:**
+- Pull request with 1+ reviewer approval
+- Passing status checks (lint, security scan, file structure)
+- Code owner review (when applicable)
+- DCO sign-off on all commits
+
+**No direct pushes allowed** - this applies to all contributors including maintainers.
 
 ## Conventional commits
 
