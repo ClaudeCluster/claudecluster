@@ -1,0 +1,89 @@
+# Docker Compose configuration for ClaudeCluster Worker development
+version: '3.8'
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claudecluster/worker:latest
+    container_name: claudecluster-worker
+    ports:
+      - "3001:3001"
+    volumes:
+      # Mount Claude CLI auth file (read-only)
+      # Update the source path to your actual Claude CLI auth location
+      - "${HOME}/.config/claude/config.json:/app/auth/config.json:ro"
+      # Optional: Mount logs directory for persistence
+      - "./logs:/app/logs"
+      # Optional: Mount source code for development (comment out in production)
+      - "./src:/app/src"
+      - "./package.json:/app/package.json:ro"
+    environment:
+      # Worker Configuration
+      - NODE_ENV=development
+      - PORT=3001
+      - HOST=0.0.0.0
+      - LOG_LEVEL=debug
+      
+      # PTY Configuration
+      - CLAUDE_CLI_PATH=claude
+      - PTY_TIMEOUT_MS=300000
+      - MAX_CONCURRENT_PROCESSES=3
+      - PTY_TERMINAL_COLS=120
+      - PTY_TERMINAL_ROWS=30
+      
+      # Development Settings
+      - EXECUTOR_TYPE=pty  # or 'stub' for testing
+      - STREAMING_TYPE=stub  # SSE not implemented yet
+    networks:
+      - claudecluster-network
+    restart: unless-stopped
+    
+    # Resource limits for local development
+    deploy:
+      resources:
+        limits:
+          memory: 2G  # 2GB for local dev (4GB recommended for production)
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/hello"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Ensure clean shutdown
+    stop_grace_period: 30s
+
+# Optional: Future services for full local development
+# Uncomment when MCP server is implemented in Task 7
+# 
+#   mcp-server:
+#     build:
+#       context: ../mcp
+#       dockerfile: Dockerfile
+#     image: claudecluster/mcp:latest
+#     container_name: claudecluster-mcp
+#     ports:
+#       - "3000:3000"
+#     environment:
+#       - NODE_ENV=development
+#       - PORT=3000
+#       - WORKER_ENDPOINTS=http://worker:3001
+#     depends_on:
+#       worker:
+#         condition: service_healthy
+#     networks:
+#       - claudecluster-network
+#     restart: unless-stopped
+
+networks:
+  claudecluster-network:
+    driver: bridge
+    name: claudecluster-network

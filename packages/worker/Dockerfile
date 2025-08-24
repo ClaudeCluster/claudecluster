@@ -1,0 +1,103 @@
+# Multi-stage Dockerfile for ClaudeCluster Worker
+# Uses Debian bookworm-slim for lightweight, stable base with Python 3.11
+
+FROM node:18.19-bookworm-slim AS base
+
+# Install system dependencies for PTY and Claude CLI
+RUN apt-get update && apt-get install -y \
+    # PTY dependencies
+    python3.11 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    # Additional tools needed for node-pty compilation
+    make \
+    gcc \
+    g++ \
+    # Claude CLI dependencies  
+    curl \
+    ca-certificates \
+    # PTY system libraries
+    libpty1 \
+    libutempter0 \
+    # Clean up to reduce image size
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install Claude CLI globally
+RUN npm install -g @anthropic-ai/claude-cli@latest
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN groupadd -r claudeuser && useradd -r -g claudeuser claudeuser
+
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml* ./
+
+# Install dependencies with production optimizations
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    PYTHON=/usr/bin/python3.11 pnpm install --frozen-lockfile --prod
+
+# Copy application source code
+COPY --chown=claudeuser:claudeuser . .
+
+# Build the application
+RUN pnpm build
+
+# Create final runtime stage
+FROM node:18.19-bookworm-slim AS runtime
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    libpty1 \
+    libutempter0 \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install Claude CLI
+RUN npm install -g @anthropic-ai/claude-cli@latest
+
+# Create non-root user
+RUN groupadd -r claudeuser && useradd -r -g claudeuser -d /app claudeuser
+
+# Set working directory
+WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+# Copy built application from base stage
+COPY --from=base --chown=claudeuser:claudeuser /app/node_modules ./node_modules
+COPY --from=base --chown=claudeuser:claudeuser /app/dist ./dist
+COPY --from=base --chown=claudeuser:claudeuser /app/package.json ./
+
+# Create directories for volumes
+RUN mkdir -p /app/auth && chown claudeuser:claudeuser /app/auth
+RUN mkdir -p /app/logs && chown claudeuser:claudeuser /app/logs
+
+# Switch to non-root user
+USER claudeuser
+
+# Expose worker port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3001/hello || exit 1
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOST=0.0.0.0
+ENV LOG_LEVEL=info
+
+# Start the worker service
+CMD ["pnpm", "start"]
