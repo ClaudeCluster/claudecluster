@@ -1,0 +1,104 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+!README.md
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npmrc
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Temporary directories
+tmp/
+temp/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.turbo/
+.nx/
+
+# Development files
+.serena/
+.taskmaster/tasks/
+.taskmaster/reports/
+
+# Test files
+tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Linting and formatting
+.eslintrc.*
+.prettierrc*
+.editorconfig
+
+# TypeScript
+tsconfig*.json
+!tsconfig.json
+
+# Turbo
+turbo.json
+
+# Package manager files (these should be copied explicitly)
+package-lock.json
+yarn.lock
+# pnpm-lock.yaml (needed for builds)

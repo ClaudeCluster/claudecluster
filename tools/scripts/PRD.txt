@@ -1,374 +1,305 @@
 # Overview
 
-ClaudeCluster is an open-source orchestration framework that transforms Claude Code into a scalable, parallel coding cluster. The system enables a single Driver instance to coordinate multiple Worker instances running Claude Code sessions in parallel, distributing coding tasks (scaffolding, refactoring, testing, documentation) and aggregating results for accelerated software development.
+ClaudeCluster Phase 0 is the smallest viable end-to-end system proving the core concept: a **Hello World** where the **Primary (CLI Driver)** sends a message to a **Worker (Claude Code CLI in a PTY)** via an **MCP Server** that acts as a proxy/router. Workers can run locally in Docker or remotely on Google Cloud Run.
 
-The framework solves the problem of sequential task execution limitations in AI-assisted development by enabling parallel execution of independent tasks, dramatically reducing time-to-delivery for complex projects. It targets development teams and organizations looking to scale their AI-assisted development workflows while maintaining transparency, control, and enterprise-grade security.
+This phase establishes the foundational architecture for parallel Claude Code orchestration by proving we can:
+- Launch worker containers with Claude Code CLI in PTY sessions
+- Route requests through an MCP server proxy
+- Stream live terminal output back to the primary CLI
+- Deploy both locally and to cloud infrastructure
+
+The system targets developers who want to experiment with distributed Claude Code workflows and serves as the foundation for future orchestration capabilities.
 
 # Core Features
 
-## Driver Orchestration Engine
-The Driver is the central coordinator that receives high-level goals and orchestrates task execution across multiple Workers.
-- Task graph planning and dependency resolution
-- Dynamic worker allocation and load balancing
-- Real-time progress aggregation and monitoring
-- Artifact collection and consolidation
-- Retry logic and failure handling
-- Token budget management across workers
+## Worker Execution Environment
+Workers are containerized services running Claude Code CLI in pseudo-terminal sessions.
+- HTTP server with health check and execution endpoints
+- PTY (pseudo-terminal) integration using node-pty for realistic CLI interaction
+- Live streaming of terminal output via Server-Sent Events
+- Docker containerization with pre-mounted Claude CLI authentication
+- Support for both local Docker and Google Cloud Run deployment
+- Clean session lifecycle management and resource cleanup
 
-## Worker Execution Framework
-Workers are isolated Claude Code instances that execute specific tasks assigned by the Driver.
-- Isolated execution environments for task safety
-- Streaming progress updates to Driver
-- Artifact generation (diffs, files, test results)
-- Resource usage monitoring and reporting
-- Graceful failure handling and recovery
-- Support for different runtime environments (local, Docker, K8s)
+## MCP Server Proxy
+The MCP server acts as a router and proxy between Primary and Workers.
+- Task routing and worker selection (static configuration in Phase 0)
+- Request forwarding from Primary to appropriate Worker
+- Server-Sent Events proxy for streaming terminal output
+- In-memory task tracking with unique task IDs
+- Worker registry and health monitoring
+- HTTP API for task submission and stream consumption
 
-## Task Management System
-A comprehensive system for defining, scheduling, and tracking coding tasks.
-- Task definition with clear inputs/outputs
-- Dependency graph construction
-- Priority-based scheduling
-- Deduplication of similar tasks
-- Map/reduce patterns for parallel operations
-- Task result caching and reuse
+## Primary CLI Interface
+Command-line tool for submitting prompts and receiving streamed results.
+- Simple run command with prompt input
+- Configuration management for local vs cloud deployments
+- SSE stream parsing and real-time output display
+- Clean error handling and connection management
+- Support for different MCP server endpoints
+- Extensible configuration system for future features
 
 ## Communication Protocol
-Standardized communication between Driver and Workers for coordination.
-- JSON-RPC based messaging protocol
-- WebSocket connections for real-time streaming
-- Event-driven architecture for progress updates
-- Structured logging format
-- Error propagation and handling
-- Health checks and heartbeat monitoring
-
-## CLI Interface
-Command-line tool for interacting with ClaudeCluster.
-- Initialize and configure clusters
-- Submit tasks and monitor progress
-- Retrieve artifacts and logs
-- Manage worker pools
-- Debug and troubleshoot issues
-- Integration with CI/CD pipelines
+Standardized JSON-based communication between all components.
+- Primary to MCP: task submission with prompt and optional worker targeting
+- MCP to Worker: forwarded execution requests
+- Worker to MCP to Primary: streamed terminal output via SSE events
+- Structured event types for session lifecycle (start/chunk/end)
+- Error propagation and status reporting
+- Connection health monitoring and cleanup
 
 # User Experience
 
 ## Developer Persona
-Software engineers and DevOps teams who want to accelerate development using AI assistance at scale. They need transparency into task execution, control over resource usage, and integration with existing development workflows.
+Software engineers and DevOps teams who want to experiment with distributed AI-assisted development workflows. They need a simple way to test Claude Code orchestration concepts and understand the foundational architecture before scaling to production use cases.
 
 ## Key User Flows
-1. **Task Submission**: Developer submits a high-level goal → Driver plans task graph → Workers execute in parallel → Results aggregated
-2. **Progress Monitoring**: Real-time streaming of logs → Visual task graph updates → Artifact preview as generated
-3. **Result Integration**: Completed artifacts reviewed → Git commits/PRs created → CI/CD pipeline triggered
+1. **Local Development**: Developer runs worker in Docker → starts MCP server locally → uses CLI to submit prompts → sees live Claude Code output
+2. **Cloud Deployment**: Developer deploys worker to Cloud Run → deploys MCP to Cloud Run → configures CLI for cloud endpoints → submits prompts from anywhere
+3. **Experimentation**: Developer modifies prompts and observes how Claude Code responds in real-time through the distributed system
 
 ## UI/UX Considerations
-- CLI-first design for developer workflows
-- Optional web dashboard for visual monitoring
-- Structured output formats for tool integration
-- Clear error messages and debugging information
-- Progressive disclosure of complexity
+- CLI-first design matching developer workflow expectations
+- Real-time streaming output identical to direct Claude Code usage
+- Clear error messages for connection and deployment issues
+- Simple configuration with sensible defaults
+- Minimal cognitive overhead for basic usage
 
 # Technical Architecture
 
 ## System Components
 
-### Core Package (@claudecluster/core)
-- Type definitions and interfaces
-- Base classes for Driver and Worker
-- Communication protocol implementation
-- Event system and pub/sub
-- Error types and handling
-- Configuration management
-
-### Driver Package (@claudecluster/driver)
-- Task graph planner
-- Scheduler implementation
-- Worker pool management
-- Result aggregation logic
-- State persistence
-- API server for external communication
-
 ### Worker Package (@claudecluster/worker)
-- Claude Code session management
-- Task execution engine
-- Artifact capture system
-- Progress reporting
-- Resource monitoring
-- Sandbox environment setup
+- Fastify HTTP server with /hello and /run endpoints
+- node-pty integration for spawning Claude Code CLI sessions
+- Server-Sent Events streaming for real-time output
+- Docker containerization with proper PTY dependencies
+- Environment configuration for authentication mounting
+- Session management and resource cleanup
+
+### MCP Server Package (@claudecluster/mcp)
+- Fastify HTTP server with task routing capabilities
+- Worker registry and selection logic (static in Phase 0)
+- SSE proxy functionality for streaming events
+- In-memory task tracking and state management
+- Configuration system for worker endpoints
+- Health monitoring and error handling
+
+### Primary CLI Package (@claudecluster/cli)
+- Command-line interface with run command
+- Configuration management for different environments
+- SSE client for consuming streamed events
+- Output formatting and display logic
+- Error handling and user feedback
+- Extensible command structure
 
 ### Shared Package (@claudecluster/shared)
-- Common utilities
-- Logging framework
-- Metrics collection
-- Configuration schemas
-- Validation helpers
-- Network utilities
+- Common TypeScript types and interfaces
+- SSE event definitions and utilities
+- Configuration schemas and validation
+- Error types and handling utilities
+- Network utilities and helpers
+- Logging and monitoring utilities
 
 ## Data Models
 
 ### Task Model
-- ID, title, description
-- Type (scaffold, refactor, test, docs)
-- Dependencies array
-- Input parameters
-- Expected outputs
-- Resource requirements
-- Priority level
+- taskId: unique identifier for tracking
+- prompt: user input to send to Claude Code CLI
+- workerTarget: optional specific worker URL
+- status: pending/running/completed/failed
+- createdAt: timestamp for lifecycle tracking
 
 ### Worker Model
-- ID, status, capabilities
-- Current task assignment
-- Resource usage metrics
-- Connection details
-- Health status
-- Configuration
+- workerId: unique worker identifier
+- url: HTTP endpoint for worker communication
+- status: online/offline/busy
+- capabilities: supported features (extensible)
+- deploymentType: local/docker/cloudrun
 
-### Artifact Model
-- Task ID reference
-- Type (file, diff, log, test-result)
-- Content or file path
-- Metadata (timestamp, size, hash)
-- Validation status
+### SSE Event Model
+- event: start/chunk/end event types
+- data: JSON payload with event-specific information
+- timestamp: when event was generated
+- taskId: associated task identifier
 
 ## APIs and Integrations
 
-### Internal APIs
-- Driver-Worker RPC protocol
-- Task submission API
-- Progress streaming API
-- Artifact retrieval API
-- Monitoring metrics API
+### Primary to MCP API
+- POST /tasks: submit task with prompt and optional worker target
+- GET /stream/:taskId: consume SSE stream for task output
+- GET /workers: list available workers and their status
+
+### MCP to Worker API
+- POST /run: forward execution request to worker
+- GET /hello: health check and worker information
+- GET /healthz: basic health monitoring endpoint
 
 ### External Integrations
-- Claude API for Worker sessions
-- Git for version control operations
-- GitHub/GitLab for PR creation
-- Docker/Kubernetes APIs for container management
-- OpenTelemetry for observability
+- Docker daemon for local container management
+- Google Cloud Run for serverless worker deployment
+- Claude Code CLI for actual AI interaction
+- node-pty for terminal session management
 
 ## Infrastructure Requirements
 
-### Minimum Requirements
-- Node.js 18+ runtime
-- 8GB RAM for Driver
-- 4GB RAM per Worker
-- Network connectivity between components
-- File system for artifact storage
+### Minimum Local Requirements
+- Node.js 18+ runtime environment
+- Docker daemon for worker containers
+- 4GB RAM for worker containers
+- Claude Code CLI installed and authenticated
 
-### Production Requirements
-- Container orchestration platform (K8s)
-- Persistent volume storage
-- Load balancer for API access
-- Monitoring infrastructure
-- Secrets management system
+### Cloud Requirements
+- Google Cloud Project with Cloud Run enabled
+- Container Registry for image storage
+- Public HTTPS endpoints for MCP and Worker services
+- Appropriate IAM permissions for deployment
 
 # Development Roadmap
 
-## Phase 1: MVP Foundation
-Build the core framework with basic Driver-Worker communication and local process execution.
+## Phase 0: Hello World Foundation
+Build the absolute minimum viable system to prove the concept works end-to-end.
 
-### Core Framework Implementation
-- Set up monorepo structure with TypeScript
-- Implement core types and interfaces
-- Create base Driver and Worker classes
-- Build communication protocol (JSON-RPC over stdio)
-- Implement basic task execution flow
-- Add logging and error handling
+### Monorepo Foundation
+- Set up pnpm/turbo monorepo with proper TypeScript configuration
+- Create packages structure: shared, worker, mcp, cli
+- Configure ESLint, Prettier, and basic CI pipeline
+- Establish shared types and common utilities
+- Set up testing infrastructure with Jest
 
-### Local Process Runner
-- Spawn Worker processes locally
-- Manage process lifecycle
-- Capture stdout/stderr
-- Handle process crashes
-- Implement basic resource limits
+### Worker Implementation
+- Build Fastify HTTP server with /hello and /run endpoints
+- Integrate node-pty for spawning Claude Code CLI sessions
+- Implement Server-Sent Events streaming for terminal output
+- Create Docker container with proper PTY dependencies
+- Handle authentication mounting from host system
+- Add session lifecycle management and cleanup
 
-### CLI Tool
-- Initialize project structure
-- Submit simple tasks
-- Monitor task progress
-- Retrieve task artifacts
-- Basic configuration management
+### MCP Server Implementation
+- Create Fastify server with task routing capabilities
+- Implement worker registry with static configuration
+- Build SSE proxy functionality for streaming events
+- Add in-memory task tracking with unique IDs
+- Handle request forwarding and response proxying
+- Implement basic error handling and logging
 
-### Testing Infrastructure
-- Unit test setup for all packages
-- Integration tests for Driver-Worker communication
-- End-to-end test with sample tasks
-- Mock Claude API for testing
-- CI pipeline setup
+### Primary CLI Implementation
+- Build command-line interface with run command
+- Add configuration management for local vs cloud
+- Implement SSE client for consuming streamed events
+- Create output formatting and display logic
+- Handle errors gracefully with user-friendly messages
+- Support different MCP server endpoints
 
-## Phase 2: Enhanced Orchestration
-Add sophisticated task management, scheduling, and parallel execution capabilities.
+### Local Development Setup
+- Docker build and run scripts for worker
+- Local MCP server startup and configuration
+- CLI configuration for local development
+- Authentication mounting for Claude Code CLI
+- End-to-end testing with Docker containers
 
-### Task Graph System
-- Dependency resolution algorithm
-- Topological sorting for execution order
-- Cycle detection and prevention
-- Dynamic graph updates
-- Visualization support
+### Cloud Deployment
+- Google Cloud Run deployment for worker service
+- Cloud Run deployment for MCP server
+- Container registry integration and image pushing
+- Environment configuration for cloud services
+- Public endpoint configuration and testing
 
-### Advanced Scheduling
-- Priority queue implementation
-- Resource-aware scheduling
-- Task deduplication
-- Retry mechanisms with backoff
-- Failure recovery strategies
-
-### Parallel Execution Patterns
-- Map/reduce operations
-- Fork/join patterns
-- Pipeline execution
-- Batch processing
-- Stream processing
-
-### Progress and Monitoring
-- Real-time progress streaming
-- Structured logging system
-- Metrics collection (Prometheus format)
-- Health check endpoints
-- Debug mode with verbose output
-
-## Phase 3: Production Features
-Add enterprise-grade features for production deployment and scaling.
-
-### Container Runners
-- Docker runner implementation
-- Kubernetes runner with pod management
-- Container image management
-- Volume mounting for artifacts
-- Network isolation
-
-### Observability
-- OpenTelemetry integration
-- Distributed tracing
-- Custom metrics and dashboards
-- Log aggregation
-- Performance profiling
-
-### Git Integration
-- Automatic PR creation
-- Commit message generation
-- Review summary creation
-- Conflict resolution assistance
-- Branch management
-
-### Security and Governance
-- Token budget management
-- Network access controls
-- File system sandboxing
-- Secrets management integration
-- Audit logging
-
-## Phase 4: Enterprise Features
-Add multi-tenancy, advanced governance, and enterprise integration capabilities.
-
-### Multi-tenancy
-- Project isolation
-- User authentication
-- Role-based access control
-- Resource quotas
-- Usage tracking
-
-### Advanced Governance
-- Approval workflows
-- Policy engine
-- Compliance reporting
-- Data retention policies
-- Export capabilities
-
-### Enterprise Integrations
-- LDAP/SAML authentication
-- Enterprise proxy support
-- Custom plugin system
-- Webhook notifications
-- REST API v2
+### Testing and Quality
+- Unit tests for core functionality
+- Integration tests for component communication
+- Smoke tests for deployment verification
+- Error handling and edge case testing
+- Performance baseline measurements
 
 # Logical Dependency Chain
 
-## Foundation Layer (Must be built first)
-1. Core types and interfaces - Everything depends on these
-2. Communication protocol - Required for Driver-Worker interaction
-3. Basic Driver implementation - Central coordinator needed
-4. Basic Worker implementation - Task executors needed
-5. Local process runner - Simplest execution environment
+## Foundation (Must be built first)
+1. Monorepo setup and shared types - Required by all packages
+2. Worker HTTP server scaffold - Core service foundation
+3. PTY integration in worker - Essential for Claude Code interaction
+4. Docker containerization - Required for deployment
+5. Basic MCP server - Needed for routing and proxying
 
-## Execution Layer (Builds on foundation)
-6. Task model and storage - Required for task management
-7. Task submission system - Entry point for users
-8. Task execution engine - Core functionality
-9. Artifact capture - Output collection
-10. CLI tool - User interface
+## Integration (Builds on foundation)
+6. MCP task routing and worker forwarding - Connects primary to workers
+7. SSE streaming implementation - Enables real-time output
+8. Primary CLI with run command - User interface
+9. Configuration management - Environment flexibility
+10. Local Docker integration - Development workflow
 
-## Orchestration Layer (Enables scaling)
-11. Task graph planner - Dependency management
-12. Scheduler - Intelligent task distribution
-13. Worker pool management - Dynamic scaling
-14. Progress streaming - Real-time feedback
-15. Result aggregation - Output consolidation
+## Deployment (Production readiness)
+11. Google Cloud Run worker deployment - Cloud scalability
+12. Cloud Run MCP deployment - Centralized routing
+13. Container registry integration - Image distribution
+14. End-to-end cloud testing - Deployment verification
+15. Authentication and security - Production safety
 
-## Production Layer (Enterprise readiness)
-16. Container runners - Production deployment
-17. Observability - Monitoring and debugging
-18. Git integration - Workflow integration
-19. Security features - Enterprise requirements
-20. Web dashboard - Visual management
+## Quality and Operations
+16. Comprehensive testing suite - Reliability assurance
+17. Logging and monitoring - Operational visibility
+18. Error handling and recovery - Robustness
+19. Documentation and examples - Developer experience
+20. Performance optimization - Efficiency
 
 # Risks and Mitigations
 
 ## Technical Risks
 
-### Claude API Rate Limits
-Risk: Multiple Workers may hit API rate limits
-Mitigation: Implement token bucket algorithm, queue management, and exponential backoff
+### PTY Dependencies in Containers
+Risk: node-pty may not work properly in Docker containers
+Mitigation: Use Debian slim base image with required PTY libraries, test locally first, document specific dependencies
 
-### Worker Process Crashes
-Risk: Worker crashes could lose task progress
-Mitigation: Implement checkpointing, task state persistence, and automatic retry with resume
+### Claude CLI Authentication
+Risk: Mounting authentication may fail or be insecure
+Mitigation: Use read-only volume mounts, document exact paths, provide fallback configuration options
 
-### Network Partitions
-Risk: Driver-Worker communication disruption
-Mitigation: Implement heartbeat monitoring, reconnection logic, and graceful degradation
+### SSE Proxy Latency
+Risk: Streaming through MCP proxy may introduce unacceptable delays
+Mitigation: Implement efficient streaming with proper headers, avoid buffering, test with realistic payloads
 
-### Resource Exhaustion
-Risk: Unbounded task execution could exhaust system resources
-Mitigation: Resource limits, quotas, circuit breakers, and monitoring alerts
-
-## Architectural Risks
-
-### Complexity Growth
-Risk: System becomes too complex to maintain
-Mitigation: Clear separation of concerns, comprehensive documentation, extensive testing
-
-### Performance Bottlenecks
-Risk: Driver becomes bottleneck for many Workers
-Mitigation: Horizontal scaling capability, async processing, caching layer
-
-### Integration Challenges
-Risk: Difficulty integrating with diverse development environments
-Mitigation: Plugin architecture, standard protocols, comprehensive SDK
+### Cloud Run Cold Starts
+Risk: Worker containers may have high latency on first request
+Mitigation: Configure minimum instances appropriately, implement proper warming strategies, document expected behavior
 
 ## Operational Risks
 
-### Debugging Complexity
-Risk: Hard to debug distributed task execution
-Mitigation: Distributed tracing, centralized logging, replay capability
+### Container Resource Limits
+Risk: Workers may exhaust memory or CPU in containers
+Mitigation: Set appropriate resource limits, implement timeouts, monitor resource usage, clean up sessions
 
-### Data Consistency
-Risk: Artifact corruption or loss
-Mitigation: Checksums, atomic operations, backup strategies
+### Network Connectivity
+Risk: Communication between MCP and Workers may fail
+Mitigation: Implement retry logic, health checks, graceful degradation, proper error reporting
+
+### Session Management
+Risk: Abandoned or long-running sessions may consume resources
+Mitigation: Implement session timeouts, cleanup on disconnect, resource monitoring, process termination
+
+## Security Risks
+
+### Unauthenticated Endpoints
+Risk: Phase 0 uses unauthenticated endpoints for simplicity
+Mitigation: Document security limitations, plan authentication for Phase 1, use private networks where possible
+
+### Credential Exposure
+Risk: Claude CLI credentials mounted in containers
+Mitigation: Use read-only mounts, container isolation, proper file permissions, credential rotation planning
 
 # Appendix
 
 ## Research Findings
-- Analysis of similar orchestration systems (Kubernetes Jobs, Apache Airflow)
-- Claude API capabilities and limitations study
-- Performance benchmarks of parallel vs sequential execution
-- Security best practices for multi-tenant systems
+- node-pty works reliably in Docker containers with proper base images
+- Server-Sent Events provide efficient real-time streaming for terminal output
+- Google Cloud Run supports container applications with proper configuration
+- Fastify provides excellent performance for proxy/routing use cases
 
 ## Technical Specifications
-- JSON-RPC 2.0 for communication protocol
-- TypeScript with strict mode for type safety
-- Jest for testing framework
-- Docker containers for isolation
-- Kubernetes for orchestration
-- OpenTelemetry for observability
-- PostgreSQL for state persistence (future)
+- Node.js 18+ with TypeScript for all components
+- Fastify web framework for HTTP servers
+- node-pty for pseudo-terminal integration
+- Server-Sent Events for real-time streaming
+- Docker containers with Debian slim base images
+- Google Cloud Run for serverless deployment
+- pnpm for package management and monorepo tooling
+- Turbo for build system and task orchestration

@@ -1,0 +1,39 @@
+{
+  "$schema": "../packages/shared/src/schemas/config.schema.json",
+  "server": {
+    "url": "http://localhost:3000",
+    "timeout": 30000
+  },
+  "logging": {
+    "level": "info",
+    "console": true,
+    "format": "simple"
+  },
+  "defaults": {
+    "priority": 5,
+    "timeout": 300
+  },
+  "workers": {
+    "static": {
+      "endpoints": [
+        "http://localhost:3001",
+        "http://localhost:3002"
+      ],
+      "healthCheck": {
+        "enabled": true,
+        "interval": 30000,
+        "timeout": 5000,
+        "retries": 3
+      }
+    }
+  },
+  "mcp": {
+    "port": 3000,
+    "host": "0.0.0.0",
+    "cors": {
+      "enabled": true,
+      "origins": ["http://localhost:*"],
+      "credentials": true
+    }
+  }
+}

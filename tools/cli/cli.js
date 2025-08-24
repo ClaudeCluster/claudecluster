@@ -253,6 +253,7 @@ async function main() {
   log('🎯 Welcome to Task Master AI CLI!', 'bright');
   log('Type "help" to see available commands\n');
   
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       const command = await question('taskmaster> ');

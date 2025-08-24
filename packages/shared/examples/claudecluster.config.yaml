@@ -1,0 +1,1 @@
+# Example ClaudeCluster YAML configuration file\nserver:\n  url: http://localhost:3000\n  timeout: 30000\n\nlogging:\n  level: info\n  console: true\n  format: simple\n\ndefaults:\n  priority: 5\n  timeout: 300\n

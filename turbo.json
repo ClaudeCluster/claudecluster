@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["**/.env*", "tsconfig.json", ".eslintrc.js", ".prettierrc"],
+  "globalDependencies": ["**/.env*", "tsconfig.json", "eslint.config.js", ".prettierrc", ".editorconfig"],
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
@@ -18,11 +18,11 @@
     },
     "lint": {
       "outputs": [".eslintcache"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts", ".eslintrc.js"]
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "eslint.config.js"]
     },
     "lint:fix": {
       "outputs": [".eslintcache"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts", ".eslintrc.js"]
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "eslint.config.js"]
     },
     "format": {
       "outputs": [],

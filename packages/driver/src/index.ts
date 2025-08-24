@@ -1,5 +1,5 @@
 import { Driver, DriverStatus, Task, Worker } from '@claudecluster/core';
-import { Orchestrator } from './orchestrator';
+import { SimpleOrchestrator as Orchestrator } from './simple-orchestrator';
 import { TaskScheduler } from './task-scheduler';
 import { WorkerManager } from './worker-manager';
 
@@ -23,9 +23,9 @@ export class ClaudeDriver implements Driver {
     this.tasks = [];
     this.metadata = {};
 
-    this.orchestrator = new Orchestrator(this);
-    this.taskScheduler = new TaskScheduler(this);
-    this.workerManager = new WorkerManager(this);
+    this.orchestrator = new Orchestrator();
+    this.taskScheduler = new TaskScheduler();
+    this.workerManager = new WorkerManager();
   }
 
   async start(): Promise<void> {

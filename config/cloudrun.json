@@ -1,0 +1,40 @@
+{
+  "$schema": "../packages/shared/src/schemas/config.schema.json",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "cors": {
+      "origin": "*",
+      "credentials": true
+    },
+    "rateLimit": {
+      "windowMs": 60000,
+      "maxRequests": 1000
+    }
+  },
+  "worker": {
+    "id": "worker-cloudrun",
+    "capabilities": {
+      "maxConcurrentTasks": 1,
+      "supportedCommands": ["run", "status", "health"],
+      "timeout": 600000
+    }
+  },
+  "logging": {
+    "level": "info",
+    "console": true,
+    "format": "json"
+  },
+  "monitoring": {
+    "enabled": true,
+    "heartbeatInterval": 60000,
+    "taskTimeout": 600000,
+    "retryAttempts": 3
+  },
+  "execution": {
+    "executor": "pty",
+    "streaming": "sse",
+    "timeout": 600000,
+    "maxOutputSize": 1048576
+  }
+}

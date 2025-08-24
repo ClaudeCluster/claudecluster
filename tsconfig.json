@@ -1,20 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "lib": ["ES2022"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
-  },
+  "files": [],
   "references": [
+    { "path": "./packages/shared" },
     { "path": "./packages/core" },
-    { "path": "./packages/worker" },
     { "path": "./packages/driver" },
-    { "path": "./packages/shared" }
+    { "path": "./packages/worker" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mcp" }
   ]
 }

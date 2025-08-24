@@ -1,0 +1,96 @@
+# Multi-stage Dockerfile for ClaudeCluster MCP Server (Cloud Run Optimized)
+# Uses Debian bookworm-slim for lightweight, stable base
+
+FROM node:18.19-bookworm-slim AS base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    dumb-init \
+    # Clean up to reduce image size
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN groupadd -r claudeuser && useradd -r -g claudeuser claudeuser
+
+# Copy workspace files
+COPY package.json pnpm-lock.yaml* ./
+COPY pnpm-workspace.yaml* ./
+
+# Copy package.json files for workspace resolution
+COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/mcp/package.json ./packages/mcp/package.json
+
+# Install dependencies with production optimizations
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile --prod
+
+# Copy source code
+COPY packages/shared/ ./packages/shared/
+COPY packages/mcp/ ./packages/mcp/
+
+# Build packages
+RUN cd packages/shared && pnpm build
+RUN cd packages/mcp && pnpm build
+
+# Create final runtime stage
+FROM node:18.19-bookworm-slim AS runtime
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r claudeuser && useradd -r -g claudeuser -d /app claudeuser
+
+# Set working directory
+WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+# Copy built applications from base stage
+COPY --from=base --chown=claudeuser:claudeuser /app/node_modules ./node_modules
+COPY --from=base --chown=claudeuser:claudeuser /app/packages/shared/dist ./packages/shared/dist
+COPY --from=base --chown=claudeuser:claudeuser /app/packages/shared/package.json ./packages/shared/
+COPY --from=base --chown=claudeuser:claudeuser /app/packages/mcp/dist ./packages/mcp/dist
+COPY --from=base --chown=claudeuser:claudeuser /app/packages/mcp/package.json ./packages/mcp/
+COPY --from=base --chown=claudeuser:claudeuser /app/package.json ./
+COPY --from=base --chown=claudeuser:claudeuser /app/pnpm-workspace.yaml* ./
+
+# Create directories for configuration and logs
+RUN mkdir -p /app/config && chown claudeuser:claudeuser /app/config
+RUN mkdir -p /app/logs && chown claudeuser:claudeuser /app/logs
+
+# Switch to non-root user
+USER claudeuser
+
+# Set working directory to MCP package
+WORKDIR /app/packages/mcp
+
+# Cloud Run uses PORT environment variable, but we default to 8080
+ENV PORT=8080
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+ENV LOG_LEVEL=info
+
+# Expose the port that Cloud Run expects
+EXPOSE $PORT
+
+# Use dumb-init to handle signals properly in Cloud Run
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Start the MCP server
+CMD ["pnpm", "start"]

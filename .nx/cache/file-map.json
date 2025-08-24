@@ -2,13 +2,25 @@
   "version": "6.0",
   "nxVersion": "17.3.2",
   "deps": {
+    "@codecov/webpack-plugin": "^1.9.1",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "codecov": "^3.8.2",
+    "conventional-changelog-cli": "^5.0.0",
     "eslint": "^8.55.0",
-    "prettier": "^3.1.0",
-    "typescript": "^5.3.0",
+    "husky": "^9.1.7",
     "lerna": "^8.0.0",
+    "lint-staged": "^16.1.5",
     "nx": "^17.0.0",
-    "turbo": "^1.10.0"
+    "prettier": "^3.1.0",
+    "semantic-release": "^24.2.7",
+    "turbo": "^1.10.0",
+    "typescript": "^5.3.0"
   },
   "pathMappings": {},
   "nxJsonPlugins": [],
@@ -19,6 +31,53 @@
   },
   "fileMap": {
     "projectFileMap": {
+      "@claudecluster/shared": [
+        {
+          "file": "packages/shared/jest.config.js",
+          "hash": "13501632370439346754"
+        },
+        {
+          "file": "packages/shared/package.json",
+          "hash": "13014241030521429905",
+          "deps": [
+            "npm:dotenv",
+            "npm:winston",
+            "npm:joi",
+            "npm:@types/node",
+            "npm:jest"
+          ]
+        },
+        {
+          "file": "packages/shared/src/config.ts",
+          "hash": "15501658688740470098"
+        },
+        {
+          "file": "packages/shared/tsconfig.json",
+          "hash": "8271956372967336173"
+        }
+      ],
+      "@claudecluster/taskmaster": [
+        {
+          "file": "tools/taskmaster/package.json",
+          "hash": "11943307131254942469",
+          "deps": [
+            "@claudecluster/core",
+            "@claudecluster/shared"
+          ]
+        },
+        {
+          "file": "tools/taskmaster/public/index.html",
+          "hash": "18118923548715580876"
+        },
+        {
+          "file": "tools/taskmaster/taskmaster.config.js",
+          "hash": "10875388809350079607"
+        },
+        {
+          "file": "tools/taskmaster/taskmaster.js",
+          "hash": "9468477375881628361"
+        }
+      ],
       "@claudecluster/driver": [
         {
           "file": "packages/driver/jest.config.js",
@@ -50,108 +109,6 @@
           "hash": "4302795907529075396"
         }
       ],
-      "@claudecluster/core": [
-        {
-          "file": "packages/core/jest.config.js",
-          "hash": "13501632370439346754"
-        },
-        {
-          "file": "packages/core/package.json",
-          "hash": "12073687112212359166",
-          "deps": [
-            "npm:uuid",
-            "npm:lodash",
-            "npm:moment",
-            "npm:joi",
-            "npm:jest"
-          ]
-        },
-        {
-          "file": "packages/core/src/index.ts",
-          "hash": "2587883459480997515"
-        },
-        {
-          "file": "packages/core/src/types.ts",
-          "hash": "15972668643413245008"
-        },
-        {
-          "file": "packages/core/tsconfig.json",
-          "hash": "8200940453220686140"
-        }
-      ],
-      "@claudecluster/cli": [
-        {
-          "file": "tools/cli/package.json",
-          "hash": "6723314351649005177",
-          "deps": [
-            "@claudecluster/core",
-            "@claudecluster/shared",
-            "npm:axios",
-            "npm:jest",
-            "npm:eslint"
-          ]
-        },
-        {
-          "file": "tools/cli/src/cli.js",
-          "hash": "15692159746665518703"
-        }
-      ],
-      "@claudecluster/taskmaster": [
-        {
-          "file": "tools/taskmaster/package.json",
-          "hash": "3763708600578472707",
-          "deps": [
-            "@claudecluster/core",
-            "@claudecluster/shared",
-            "npm:express",
-            "npm:cors",
-            "npm:helmet",
-            "npm:morgan",
-            "npm:compression",
-            "npm:express-rate-limit",
-            "npm:nodemon",
-            "npm:jest",
-            "npm:eslint"
-          ]
-        },
-        {
-          "file": "tools/taskmaster/public/index.html",
-          "hash": "18118923548715580876"
-        },
-        {
-          "file": "tools/taskmaster/src/taskmaster.js",
-          "hash": "9468477375881628361"
-        },
-        {
-          "file": "tools/taskmaster/taskmaster.config.js",
-          "hash": "10875388809350079607"
-        }
-      ],
-      "@claudecluster/shared": [
-        {
-          "file": "packages/shared/jest.config.js",
-          "hash": "13501632370439346754"
-        },
-        {
-          "file": "packages/shared/package.json",
-          "hash": "13014241030521429905",
-          "deps": [
-            "npm:dotenv",
-            "npm:winston",
-            "npm:joi",
-            "npm:@types/node",
-            "npm:jest"
-          ]
-        },
-        {
-          "file": "packages/shared/src/config.ts",
-          "hash": "15501658688740470098"
-        },
-        {
-          "file": "packages/shared/tsconfig.json",
-          "hash": "8271956372967336173"
-        }
-      ],
       "@claudecluster/worker": [
         {
           "file": "packages/worker/jest.config.js",
@@ -181,16 +138,311 @@
           "file": "packages/worker/tsconfig.json",
           "hash": "4302795907529075396"
         }
+      ],
+      "@claudecluster/cli": [
+        {
+          "file": "tools/cli/cli.js",
+          "hash": "15692159746665518703"
+        },
+        {
+          "file": "tools/cli/package.json",
+          "hash": "15713972907120064322",
+          "deps": [
+            "@claudecluster/core",
+            "@claudecluster/shared"
+          ]
+        }
+      ],
+      "@claudecluster/core": [
+        {
+          "file": "packages/core/jest.config.js",
+          "hash": "17734513866826877582"
+        },
+        {
+          "file": "packages/core/package.json",
+          "hash": "12073687112212359166",
+          "deps": [
+            "npm:uuid",
+            "npm:lodash",
+            "npm:moment",
+            "npm:joi",
+            "npm:jest"
+          ]
+        },
+        {
+          "file": "packages/core/src/index.ts",
+          "hash": "2587883459480997515"
+        },
+        {
+          "file": "packages/core/src/types.ts",
+          "hash": "15972668643413245008"
+        },
+        {
+          "file": "packages/core/tsconfig.json",
+          "hash": "8200940453220686140"
+        }
       ]
     },
     "nonProjectFiles": [
+      {
+        "file": ".claude/TM_COMMANDS_GUIDE.md",
+        "hash": "885632991980438802"
+      },
+      {
+        "file": ".claude/agents/task-checker.md",
+        "hash": "5695179480994491997"
+      },
+      {
+        "file": ".claude/agents/task-executor.md",
+        "hash": "4966098381935819827"
+      },
+      {
+        "file": ".claude/agents/task-orchestrator.md",
+        "hash": "6134035166740157495"
+      },
+      {
+        "file": ".claude/commands/tm/add-dependency/add-dependency.md",
+        "hash": "17574029989227186413"
+      },
+      {
+        "file": ".claude/commands/tm/add-subtask/add-subtask.md",
+        "hash": "6227862423618403844"
+      },
+      {
+        "file": ".claude/commands/tm/add-subtask/convert-task-to-subtask.md",
+        "hash": "14461253366000108549"
+      },
+      {
+        "file": ".claude/commands/tm/add-task/add-task.md",
+        "hash": "5013132681119420878"
+      },
+      {
+        "file": ".claude/commands/tm/analyze-complexity/analyze-complexity.md",
+        "hash": "10766236303568098353"
+      },
+      {
+        "file": ".claude/commands/tm/clear-subtasks/clear-all-subtasks.md",
+        "hash": "8933507338843031536"
+      },
+      {
+        "file": ".claude/commands/tm/clear-subtasks/clear-subtasks.md",
+        "hash": "9864400452020984562"
+      },
+      {
+        "file": ".claude/commands/tm/complexity-report/complexity-report.md",
+        "hash": "17191414983261902395"
+      },
+      {
+        "file": ".claude/commands/tm/expand/expand-all-tasks.md",
+        "hash": "9721185615610999326"
+      },
+      {
+        "file": ".claude/commands/tm/expand/expand-task.md",
+        "hash": "8076639742082810047"
+      },
+      {
+        "file": ".claude/commands/tm/fix-dependencies/fix-dependencies.md",
+        "hash": "4848387660942211301"
+      },
+      {
+        "file": ".claude/commands/tm/generate/generate-tasks.md",
+        "hash": "17835529789237344192"
+      },
+      {
+        "file": ".claude/commands/tm/help.md",
+        "hash": "13016011362258561844"
+      },
+      {
+        "file": ".claude/commands/tm/init/init-project-quick.md",
+        "hash": "1707760479198034419"
+      },
+      {
+        "file": ".claude/commands/tm/init/init-project.md",
+        "hash": "10560171071858659783"
+      },
+      {
+        "file": ".claude/commands/tm/learn.md",
+        "hash": "15318882184986222336"
+      },
+      {
+        "file": ".claude/commands/tm/list/list-tasks-by-status.md",
+        "hash": "15684271673018970801"
+      },
+      {
+        "file": ".claude/commands/tm/list/list-tasks-with-subtasks.md",
+        "hash": "15279098352756330164"
+      },
+      {
+        "file": ".claude/commands/tm/list/list-tasks.md",
+        "hash": "17532067183583055342"
+      },
+      {
+        "file": ".claude/commands/tm/models/setup-models.md",
+        "hash": "6360065016773554610"
+      },
+      {
+        "file": ".claude/commands/tm/models/view-models.md",
+        "hash": "10847763398136291332"
+      },
+      {
+        "file": ".claude/commands/tm/next/next-task.md",
+        "hash": "16032588098839391951"
+      },
+      {
+        "file": ".claude/commands/tm/parse-prd/parse-prd-with-research.md",
+        "hash": "11035645414761807625"
+      },
+      {
+        "file": ".claude/commands/tm/parse-prd/parse-prd.md",
+        "hash": "2477919788062522276"
+      },
+      {
+        "file": ".claude/commands/tm/remove-dependency/remove-dependency.md",
+        "hash": "7519571654919106404"
+      },
+      {
+        "file": ".claude/commands/tm/remove-subtask/remove-subtask.md",
+        "hash": "8155291805584610382"
+      },
+      {
+        "file": ".claude/commands/tm/remove-task/remove-task.md",
+        "hash": "8726265659053569852"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-cancelled.md",
+        "hash": "3836490639680811162"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-deferred.md",
+        "hash": "12027692096997194945"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-done.md",
+        "hash": "5170235664928689824"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-in-progress.md",
+        "hash": "7116503652401619927"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-pending.md",
+        "hash": "3394533295186248683"
+      },
+      {
+        "file": ".claude/commands/tm/set-status/to-review.md",
+        "hash": "7226141378348946004"
+      },
+      {
+        "file": ".claude/commands/tm/setup/install-taskmaster.md",
+        "hash": "2898480970617074667"
+      },
+      {
+        "file": ".claude/commands/tm/setup/quick-install-taskmaster.md",
+        "hash": "17671342989039132982"
+      },
+      {
+        "file": ".claude/commands/tm/show/show-task.md",
+        "hash": "2364891518066359744"
+      },
+      {
+        "file": ".claude/commands/tm/status/project-status.md",
+        "hash": "17270957807476671886"
+      },
+      {
+        "file": ".claude/commands/tm/sync-readme/sync-readme.md",
+        "hash": "3617974569574220627"
+      },
+      {
+        "file": ".claude/commands/tm/tm-main.md",
+        "hash": "936367355934081846"
+      },
+      {
+        "file": ".claude/commands/tm/update/update-single-task.md",
+        "hash": "8559634365068456286"
+      },
+      {
+        "file": ".claude/commands/tm/update/update-task.md",
+        "hash": "5743200645619479498"
+      },
+      {
+        "file": ".claude/commands/tm/update/update-tasks-from-id.md",
+        "hash": "6814348058136616087"
+      },
+      {
+        "file": ".claude/commands/tm/utils/analyze-project.md",
+        "hash": "14995866807173405704"
+      },
+      {
+        "file": ".claude/commands/tm/validate-dependencies/validate-dependencies.md",
+        "hash": "8363656493470152494"
+      },
+      {
+        "file": ".claude/commands/tm/workflows/auto-implement-tasks.md",
+        "hash": "1405395913267914516"
+      },
+      {
+        "file": ".claude/commands/tm/workflows/command-pipeline.md",
+        "hash": "10544550080598416268"
+      },
+      {
+        "file": ".claude/commands/tm/workflows/smart-workflow.md",
+        "hash": "5473684644549390503"
+      },
+      {
+        "file": ".clinerules/cline_rules.md",
+        "hash": "5899290793527808772"
+      },
+      {
+        "file": ".clinerules/dev_workflow.md",
+        "hash": "14681104962518343349"
+      },
+      {
+        "file": ".clinerules/self_improve.md",
+        "hash": "150217623434871508"
+      },
+      {
+        "file": ".clinerules/taskmaster.md",
+        "hash": "1248707859603418937"
+      },
+      {
+        "file": ".cursor/mcp.json",
+        "hash": "4781985867499984286"
+      },
+      {
+        "file": ".cursor/rules/cursor_rules.mdc",
+        "hash": "13635137457673500577"
+      },
+      {
+        "file": ".cursor/rules/self_improve.mdc",
+        "hash": "930226137200821915"
+      },
+      {
+        "file": ".cursor/rules/taskmaster/dev_workflow.mdc",
+        "hash": "6654806042644295408"
+      },
+      {
+        "file": ".cursor/rules/taskmaster/taskmaster.mdc",
+        "hash": "15081069770457708322"
+      },
+      {
+        "file": ".env.example",
+        "hash": "1508509829159116985"
+      },
+      {
+        "file": ".env.mcp.example",
+        "hash": "7165435136869822836"
+      },
       {
         "file": ".envrc",
         "hash": "1110268053093997963"
       },
       {
         "file": ".eslintrc.js",
-        "hash": "3496727812878019268"
+        "hash": "8935151334729895975"
+      },
+      {
+        "file": ".gemini/settings.json",
+        "hash": "4781985867499984286"
       },
       {
         "file": ".github/CODEOWNERS",
@@ -209,16 +461,36 @@
         "hash": "451053782265443623"
       },
       {
+        "file": ".github/instructions/dev_workflow.instructions.md",
+        "hash": "1566076234774805685"
+      },
+      {
+        "file": ".github/instructions/self_improve.instructions.md",
+        "hash": "9899211100228117070"
+      },
+      {
+        "file": ".github/instructions/taskmaster.instructions.md",
+        "hash": "14396381842719646572"
+      },
+      {
+        "file": ".github/instructions/vscode_rules.instructions.md",
+        "hash": "1570924464366550730"
+      },
+      {
         "file": ".github/pull_request_template.md",
         "hash": "8955283122029433697"
       },
       {
         "file": ".github/workflows/ci.yml",
-        "hash": "7191047162189493180"
+        "hash": "6850852409344477035"
       },
       {
         "file": ".github/workflows/markdown-link-config.json",
         "hash": "5246496468763403285"
+      },
+      {
+        "file": ".github/workflows/release.yml",
+        "hash": "9362793201218201809"
       },
       {
         "file": ".github/workflows/stale.yml",
@@ -230,7 +502,15 @@
       },
       {
         "file": ".gitignore",
-        "hash": "3446793970376313916"
+        "hash": "14530543993569926700"
+      },
+      {
+        "file": ".husky/commit-msg",
+        "hash": "1407302808277523102"
+      },
+      {
+        "file": ".husky/pre-commit",
+        "hash": "11200534014804190460"
       },
       {
         "file": ".mcp.json.example",
@@ -241,16 +521,108 @@
         "hash": "1738274915197343624"
       },
       {
+        "file": ".releaserc.json",
+        "hash": "7840135218528981084"
+      },
+      {
+        "file": ".roo/mcp.json",
+        "hash": "4781985867499984286"
+      },
+      {
+        "file": ".roo/rules-architect/architect-rules",
+        "hash": "15219967744306377164"
+      },
+      {
+        "file": ".roo/rules-ask/ask-rules",
+        "hash": "12082464614726007732"
+      },
+      {
+        "file": ".roo/rules-code/code-rules",
+        "hash": "10164557951736495533"
+      },
+      {
+        "file": ".roo/rules-debug/debug-rules",
+        "hash": "4448427940206720706"
+      },
+      {
+        "file": ".roo/rules-orchestrator/orchestrator-rules",
+        "hash": "12308251237827924838"
+      },
+      {
+        "file": ".roo/rules-test/test-rules",
+        "hash": "2261893717228978137"
+      },
+      {
+        "file": ".roo/rules/dev_workflow.md",
+        "hash": "1990364564193985932"
+      },
+      {
+        "file": ".roo/rules/roo_rules.md",
+        "hash": "11912938446465924460"
+      },
+      {
+        "file": ".roo/rules/self_improve.md",
+        "hash": "1806122526569084069"
+      },
+      {
+        "file": ".roo/rules/taskmaster.md",
+        "hash": "2113489208196467400"
+      },
+      {
+        "file": ".roomodes",
+        "hash": "9529516504631633719"
+      },
+      {
+        "file": ".taskmaster/CLAUDE.md",
+        "hash": "4758228963197844198"
+      },
+      {
+        "file": ".taskmaster/config.json",
+        "hash": "11707027352585755064"
+      },
+      {
+        "file": ".taskmaster/state.json",
+        "hash": "11414947930641837464"
+      },
+      {
+        "file": ".taskmaster/tasks/tasks.json",
+        "hash": "2529031929593607239"
+      },
+      {
+        "file": ".taskmaster/templates/example_prd.txt",
+        "hash": "7466167600502466891"
+      },
+      {
+        "file": ".windsurf/mcp.json",
+        "hash": "4781985867499984286"
+      },
+      {
+        "file": ".windsurf/rules/dev_workflow.md",
+        "hash": "5045567409426954119"
+      },
+      {
+        "file": ".windsurf/rules/self_improve.md",
+        "hash": "17552866839232041025"
+      },
+      {
+        "file": ".windsurf/rules/taskmaster.md",
+        "hash": "9116927289354160115"
+      },
+      {
+        "file": ".windsurf/rules/windsurf_rules.md",
+        "hash": "17937530733918166732"
+      },
+      {
         "file": "CLAUDE.md",
-        "hash": "15435363539047864116"
+        "hash": "10684594216506107300"
+      },
+      {
+        "file": "GEMINI.md",
+        "hash": "4758228963197844198"
       },
       {
         "file": "LICENSE",
         "hash": "12649885980860800067"
-      },
-      {
-        "file": "MONOREPO_README.md",
-        "hash": "13317458826848067377"
       },
       {
         "file": "NOTICE",
@@ -258,15 +630,35 @@
       },
       {
         "file": "README.md",
-        "hash": "671173061350697109"
+        "hash": "8686384844324940534"
       },
       {
         "file": "SECURITY.md",
         "hash": "241260965747660052"
       },
       {
+        "file": "apps/.gitkeep",
+        "hash": "15607751029239080010"
+      },
+      {
+        "file": "apps/desktop-client/README.md",
+        "hash": "9200650747500558906"
+      },
+      {
+        "file": "apps/web-dashboard/README.md",
+        "hash": "13833866244614219843"
+      },
+      {
+        "file": "commitlint.config.js",
+        "hash": "12040474848991877527"
+      },
+      {
         "file": "data/sample-tasks.json",
         "hash": "6237940097692358250"
+      },
+      {
+        "file": "docs/ARCHITECTURE.md",
+        "hash": "16927979161418956638"
       },
       {
         "file": "docs/CONTRIBUTING.md",
@@ -281,16 +673,20 @@
         "hash": "6941590698657782927"
       },
       {
-        "file": "package-lock.json",
-        "hash": "15118483385269992819"
+        "file": "package.json",
+        "hash": "16297899514458610166"
       },
       {
-        "file": "package.json",
-        "hash": "17754676766704442981"
+        "file": "pnpm-workspace.yaml",
+        "hash": "2036948920474476574"
       },
       {
         "file": "tests/taskmaster.test.js",
         "hash": "14564714638722894837"
+      },
+      {
+        "file": "tools/scripts/PRD.txt",
+        "hash": "4117652480862531853"
       },
       {
         "file": "tools/setup/TASKMASTER_README.md",
@@ -306,7 +702,7 @@
       },
       {
         "file": "tools/setup/monorepo-setup.js",
-        "hash": "10305919008737623270"
+        "hash": "852005609351076975"
       },
       {
         "file": "tools/setup/setup.js",
@@ -318,7 +714,7 @@
       },
       {
         "file": "turbo.json",
-        "hash": "8382014421010548640"
+        "hash": "5662407922113582821"
       }
     ]
   }

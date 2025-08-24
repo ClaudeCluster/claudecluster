@@ -1,5 +1,5 @@
 {
-  "name": "@claudecluster/cli",
+  "name": "@claudecluster/cli-tool",
   "version": "0.1.0",
   "description": "Command Line Interface for ClaudeCluster",
   "main": "cli.js",

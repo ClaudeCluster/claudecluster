@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # MCP Server - Coordinates task routing and management
+  mcp-server:
+    build:
+      context: .
+      dockerfile: packages/mcp/Dockerfile
+    container_name: claudecluster-mcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      # Worker configurations
+      - CLAUDECLUSTER_WORKERS_STATIC_ENDPOINTS=http://worker-1:3001,http://worker-2:3001
+      - CLAUDECLUSTER_WORKERS_STATIC_HEALTH_CHECK_ENABLED=true
+      - CLAUDECLUSTER_WORKERS_STATIC_HEALTH_CHECK_INTERVAL=30000
+      - CLAUDECLUSTER_WORKERS_STATIC_HEALTH_CHECK_TIMEOUT=5000
+      # MCP server configuration
+      - CLAUDECLUSTER_MCP_PORT=3000
+      - CLAUDECLUSTER_MCP_HOST=0.0.0.0
+    networks:
+      - claudecluster-network
+    volumes:
+      - mcp-logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      worker-1:
+        condition: service_healthy
+      worker-2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Worker 1 - Executes Claude Code tasks
+  worker-1:
+    build:
+      context: packages/worker
+      dockerfile: Dockerfile
+    container_name: claudecluster-worker-1
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - WORKER_ID=worker-1
+      - WORKER_NAME=ClaudeCluster Worker 1
+      # Claude CLI authentication (must be provided via .env file)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_CLI_SESSION_TOKEN=${CLAUDE_CLI_SESSION_TOKEN}
+      # Worker configuration
+      - CLAUDECLUSTER_WORKER_PORT=3001
+      - CLAUDECLUSTER_WORKER_HOST=0.0.0.0
+      - CLAUDECLUSTER_WORKER_CONCURRENT_TASKS=1
+    networks:
+      - claudecluster-network
+    volumes:
+      - worker-1-auth:/app/auth
+      - worker-1-logs:/app/logs
+      - worker-1-workspace:/app/workspace
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/hello"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Worker 2 - Second worker for parallel execution
+  worker-2:
+    build:
+      context: packages/worker
+      dockerfile: Dockerfile
+    container_name: claudecluster-worker-2
+    restart: unless-stopped
+    ports:
+      - "3002:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - WORKER_ID=worker-2
+      - WORKER_NAME=ClaudeCluster Worker 2
+      # Claude CLI authentication (must be provided via .env file)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_CLI_SESSION_TOKEN=${CLAUDE_CLI_SESSION_TOKEN}
+      # Worker configuration
+      - CLAUDECLUSTER_WORKER_PORT=3001
+      - CLAUDECLUSTER_WORKER_HOST=0.0.0.0
+      - CLAUDECLUSTER_WORKER_CONCURRENT_TASKS=1
+    networks:
+      - claudecluster-network
+    volumes:
+      - worker-2-auth:/app/auth
+      - worker-2-logs:/app/logs
+      - worker-2-workspace:/app/workspace
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/hello"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  claudecluster-network:
+    driver: bridge
+    name: claudecluster-network
+
+volumes:
+  # MCP server volumes
+  mcp-logs:
+    name: claudecluster-mcp-logs
+    
+  # Worker 1 volumes
+  worker-1-auth:
+    name: claudecluster-worker-1-auth
+  worker-1-logs:
+    name: claudecluster-worker-1-logs
+  worker-1-workspace:
+    name: claudecluster-worker-1-workspace
+    
+  # Worker 2 volumes
+  worker-2-auth:
+    name: claudecluster-worker-2-auth
+  worker-2-logs:
+    name: claudecluster-worker-2-logs
+  worker-2-workspace:
+    name: claudecluster-worker-2-workspace

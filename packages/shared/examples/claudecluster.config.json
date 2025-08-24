@@ -1,0 +1,1 @@
+{\n  \"_comment\": \"Example ClaudeCluster configuration file\",\n  \"server\": {\n    \"url\": \"http://localhost:3000\",\n    \"timeout\": 30000\n  },\n  \"logging\": {\n    \"level\": \"info\",\n    \"console\": true,\n    \"format\": \"simple\"\n  },\n  \"defaults\": {\n    \"priority\": 5,\n    \"timeout\": 300\n  }\n}
