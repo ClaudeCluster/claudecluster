@@ -1,0 +1,101 @@
+# OS / Editor
+.DS_Store
+.AppleDouble
+.LSOverride
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+.history/
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+tmp/
+temp/
+.cache/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Node.js / JS
+node_modules/
+.npm/
+.pnp/
+.pnp.cjs
+.pnpm-store/
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+python_env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Go
+bin/
+*.test
+*.exe
+
+# Rust
+target/
+
+# Java / Gradle
+.gradle/
+out/
+build/
+*.class
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# Kubernetes
+kubeconfig
+.kube/
+
+# Project artifacts
+artifacts/
+reports/
+outputs/
+
