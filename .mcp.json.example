@@ -1,0 +1,159 @@
+{
+	"mcpServers": {
+		"serena": {
+			"type": "stdio",
+			"command": "uvx",
+			"args": [
+				"--from",
+				"git+https://github.com/oraios/serena",
+				"serena-mcp-server",
+				"--context",
+				"ide-assistant"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 30000
+		},
+		"sequential-thinking": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-sequential-thinking"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 30000
+		},
+		"filesystem": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-filesystem",
+				"/path/to/your/claudecluster"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 60000
+		},
+		"git": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@cyanheads/git-mcp-server"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 60000
+		},
+		"github": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@edjl/github-mcp"
+			],
+			"env": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN",
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 30000
+		},
+		"task-master": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"task-master-ai"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 30000
+		},
+		"mcpdoc": {
+			"type": "stdio",
+			"command": "uvx",
+			"args": [
+				"--from",
+				"mcpdoc",
+				"mcpdoc",
+				"--urls",
+				"MCP:https://modelcontextprotocol.io/llms.txt",
+				"--urls",
+				"FastAPI:https://fastapi.tiangolo.com/llms.txt",
+				"--urls",
+				"Pydantic:https://docs.pydantic.dev/llms.txt",
+				"--follow-redirects",
+				"--timeout",
+				"15",
+				"--transport",
+				"stdio"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO"
+			},
+			"timeout": 30000,
+			"documentationSources": {
+				"mcp": "https://modelcontextprotocol.io/llms.txt",
+				"fastAPI": "https://fastapi.tiangolo.com/llms.txt",
+				"pydantic": "https://docs.pydantic.dev/llms.txt"
+			},
+			"features": {
+				"fetchDocs": true,
+				"listDocSources": true,
+				"followRedirects": true,
+				"timeout": 15
+			}
+		},
+		"context7": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@upstash/context7-mcp",
+				"--api-key",
+				"$CONTEXT7_API_KEY"
+			],
+			"env": {
+				"CLAUDECLUSTER_PROJECT_ROOT": "/path/to/your/claudecluster",
+				"LOG_LEVEL": "INFO",
+				"CONTEXT7_API_KEY": "$CONTEXT7_API_KEY"
+			},
+			"timeout": 30000,
+			"documentationFeatures": {
+				"resolveLibraryId": true,
+				"getLibraryDocs": true,
+				"maxTokens": 10000,
+				"topicFocus": true
+			},
+			"supportedLibraries": [
+				"react",
+				"vue",
+				"angular",
+				"fastapi",
+				"django",
+				"flask",
+				"express",
+				"nestjs",
+				"prisma",
+				"drizzle",
+				"tailwindcss",
+				"shadcn/ui"
+			]
+		}
+	}
+}

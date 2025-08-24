@@ -24,6 +24,10 @@ temp/
 .env
 .env.*
 !.env.example
+!.env.mcp.example
+
+# MCP configuration with sensitive paths/keys
+.mcp.json
 
 # Node.js / JS
 node_modules/
