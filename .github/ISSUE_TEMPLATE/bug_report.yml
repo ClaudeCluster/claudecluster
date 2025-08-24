@@ -1,3 +1,4 @@
+---
 name: Bug Report
 description: File a bug report to help us improve ClaudeCluster
 title: "[Bug]: "
@@ -59,10 +60,10 @@ body:
           - **Claude Code Version**: 1.2.3
           - **Docker Version**: 20.10.21
       value: |
-        - OS: 
-        - Node Version: 
-        - Claude Code Version: 
-        - Docker Version: 
+        - OS:
+        - Node Version:
+        - Claude Code Version:
+        - Docker Version:
       render: markdown
     validations:
       required: true
