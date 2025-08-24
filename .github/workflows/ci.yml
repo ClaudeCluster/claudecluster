@@ -16,7 +16,7 @@ jobs:
   lint-and-validate:
     runs-on: ubuntu-latest
     name: Lint and Validate
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     name: Security Scan
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
   file-structure-check:
     runs-on: ubuntu-latest
     name: File Structure Check
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,14 +80,14 @@ jobs:
             ".env.mcp.example"
             ".mcp.json.example"
           )
-          
+
           missing_files=()
           for file in "${required_files[@]}"; do
             if [[ ! -f "$file" ]]; then
               missing_files+=("$file")
             fi
           done
-          
+
           if [[ ${#missing_files[@]} -gt 0 ]]; then
             echo "❌ Missing required files:"
             printf '%s\n' "${missing_files[@]}"
@@ -102,14 +102,14 @@ jobs:
             ".env.mcp"
             ".mcp.json"
           )
-          
+
           found_sensitive=()
           for file in "${sensitive_files[@]}"; do
             if [[ -f "$file" ]]; then
               found_sensitive+=("$file")
             fi
           done
-          
+
           if [[ ${#found_sensitive[@]} -gt 0 ]]; then
             echo "❌ Sensitive files found in repository:"
             printf '%s\n' "${found_sensitive[@]}"
