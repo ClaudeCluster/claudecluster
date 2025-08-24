@@ -1,0 +1,374 @@
+# Overview
+
+ClaudeCluster is an open-source orchestration framework that transforms Claude Code into a scalable, parallel coding cluster. The system enables a single Driver instance to coordinate multiple Worker instances running Claude Code sessions in parallel, distributing coding tasks (scaffolding, refactoring, testing, documentation) and aggregating results for accelerated software development.
+
+The framework solves the problem of sequential task execution limitations in AI-assisted development by enabling parallel execution of independent tasks, dramatically reducing time-to-delivery for complex projects. It targets development teams and organizations looking to scale their AI-assisted development workflows while maintaining transparency, control, and enterprise-grade security.
+
+# Core Features
+
+## Driver Orchestration Engine
+The Driver is the central coordinator that receives high-level goals and orchestrates task execution across multiple Workers.
+- Task graph planning and dependency resolution
+- Dynamic worker allocation and load balancing
+- Real-time progress aggregation and monitoring
+- Artifact collection and consolidation
+- Retry logic and failure handling
+- Token budget management across workers
+
+## Worker Execution Framework
+Workers are isolated Claude Code instances that execute specific tasks assigned by the Driver.
+- Isolated execution environments for task safety
+- Streaming progress updates to Driver
+- Artifact generation (diffs, files, test results)
+- Resource usage monitoring and reporting
+- Graceful failure handling and recovery
+- Support for different runtime environments (local, Docker, K8s)
+
+## Task Management System
+A comprehensive system for defining, scheduling, and tracking coding tasks.
+- Task definition with clear inputs/outputs
+- Dependency graph construction
+- Priority-based scheduling
+- Deduplication of similar tasks
+- Map/reduce patterns for parallel operations
+- Task result caching and reuse
+
+## Communication Protocol
+Standardized communication between Driver and Workers for coordination.
+- JSON-RPC based messaging protocol
+- WebSocket connections for real-time streaming
+- Event-driven architecture for progress updates
+- Structured logging format
+- Error propagation and handling
+- Health checks and heartbeat monitoring
+
+## CLI Interface
+Command-line tool for interacting with ClaudeCluster.
+- Initialize and configure clusters
+- Submit tasks and monitor progress
+- Retrieve artifacts and logs
+- Manage worker pools
+- Debug and troubleshoot issues
+- Integration with CI/CD pipelines
+
+# User Experience
+
+## Developer Persona
+Software engineers and DevOps teams who want to accelerate development using AI assistance at scale. They need transparency into task execution, control over resource usage, and integration with existing development workflows.
+
+## Key User Flows
+1. **Task Submission**: Developer submits a high-level goal → Driver plans task graph → Workers execute in parallel → Results aggregated
+2. **Progress Monitoring**: Real-time streaming of logs → Visual task graph updates → Artifact preview as generated
+3. **Result Integration**: Completed artifacts reviewed → Git commits/PRs created → CI/CD pipeline triggered
+
+## UI/UX Considerations
+- CLI-first design for developer workflows
+- Optional web dashboard for visual monitoring
+- Structured output formats for tool integration
+- Clear error messages and debugging information
+- Progressive disclosure of complexity
+
+# Technical Architecture
+
+## System Components
+
+### Core Package (@claudecluster/core)
+- Type definitions and interfaces
+- Base classes for Driver and Worker
+- Communication protocol implementation
+- Event system and pub/sub
+- Error types and handling
+- Configuration management
+
+### Driver Package (@claudecluster/driver)
+- Task graph planner
+- Scheduler implementation
+- Worker pool management
+- Result aggregation logic
+- State persistence
+- API server for external communication
+
+### Worker Package (@claudecluster/worker)
+- Claude Code session management
+- Task execution engine
+- Artifact capture system
+- Progress reporting
+- Resource monitoring
+- Sandbox environment setup
+
+### Shared Package (@claudecluster/shared)
+- Common utilities
+- Logging framework
+- Metrics collection
+- Configuration schemas
+- Validation helpers
+- Network utilities
+
+## Data Models
+
+### Task Model
+- ID, title, description
+- Type (scaffold, refactor, test, docs)
+- Dependencies array
+- Input parameters
+- Expected outputs
+- Resource requirements
+- Priority level
+
+### Worker Model
+- ID, status, capabilities
+- Current task assignment
+- Resource usage metrics
+- Connection details
+- Health status
+- Configuration
+
+### Artifact Model
+- Task ID reference
+- Type (file, diff, log, test-result)
+- Content or file path
+- Metadata (timestamp, size, hash)
+- Validation status
+
+## APIs and Integrations
+
+### Internal APIs
+- Driver-Worker RPC protocol
+- Task submission API
+- Progress streaming API
+- Artifact retrieval API
+- Monitoring metrics API
+
+### External Integrations
+- Claude API for Worker sessions
+- Git for version control operations
+- GitHub/GitLab for PR creation
+- Docker/Kubernetes APIs for container management
+- OpenTelemetry for observability
+
+## Infrastructure Requirements
+
+### Minimum Requirements
+- Node.js 18+ runtime
+- 8GB RAM for Driver
+- 4GB RAM per Worker
+- Network connectivity between components
+- File system for artifact storage
+
+### Production Requirements
+- Container orchestration platform (K8s)
+- Persistent volume storage
+- Load balancer for API access
+- Monitoring infrastructure
+- Secrets management system
+
+# Development Roadmap
+
+## Phase 1: MVP Foundation
+Build the core framework with basic Driver-Worker communication and local process execution.
+
+### Core Framework Implementation
+- Set up monorepo structure with TypeScript
+- Implement core types and interfaces
+- Create base Driver and Worker classes
+- Build communication protocol (JSON-RPC over stdio)
+- Implement basic task execution flow
+- Add logging and error handling
+
+### Local Process Runner
+- Spawn Worker processes locally
+- Manage process lifecycle
+- Capture stdout/stderr
+- Handle process crashes
+- Implement basic resource limits
+
+### CLI Tool
+- Initialize project structure
+- Submit simple tasks
+- Monitor task progress
+- Retrieve task artifacts
+- Basic configuration management
+
+### Testing Infrastructure
+- Unit test setup for all packages
+- Integration tests for Driver-Worker communication
+- End-to-end test with sample tasks
+- Mock Claude API for testing
+- CI pipeline setup
+
+## Phase 2: Enhanced Orchestration
+Add sophisticated task management, scheduling, and parallel execution capabilities.
+
+### Task Graph System
+- Dependency resolution algorithm
+- Topological sorting for execution order
+- Cycle detection and prevention
+- Dynamic graph updates
+- Visualization support
+
+### Advanced Scheduling
+- Priority queue implementation
+- Resource-aware scheduling
+- Task deduplication
+- Retry mechanisms with backoff
+- Failure recovery strategies
+
+### Parallel Execution Patterns
+- Map/reduce operations
+- Fork/join patterns
+- Pipeline execution
+- Batch processing
+- Stream processing
+
+### Progress and Monitoring
+- Real-time progress streaming
+- Structured logging system
+- Metrics collection (Prometheus format)
+- Health check endpoints
+- Debug mode with verbose output
+
+## Phase 3: Production Features
+Add enterprise-grade features for production deployment and scaling.
+
+### Container Runners
+- Docker runner implementation
+- Kubernetes runner with pod management
+- Container image management
+- Volume mounting for artifacts
+- Network isolation
+
+### Observability
+- OpenTelemetry integration
+- Distributed tracing
+- Custom metrics and dashboards
+- Log aggregation
+- Performance profiling
+
+### Git Integration
+- Automatic PR creation
+- Commit message generation
+- Review summary creation
+- Conflict resolution assistance
+- Branch management
+
+### Security and Governance
+- Token budget management
+- Network access controls
+- File system sandboxing
+- Secrets management integration
+- Audit logging
+
+## Phase 4: Enterprise Features
+Add multi-tenancy, advanced governance, and enterprise integration capabilities.
+
+### Multi-tenancy
+- Project isolation
+- User authentication
+- Role-based access control
+- Resource quotas
+- Usage tracking
+
+### Advanced Governance
+- Approval workflows
+- Policy engine
+- Compliance reporting
+- Data retention policies
+- Export capabilities
+
+### Enterprise Integrations
+- LDAP/SAML authentication
+- Enterprise proxy support
+- Custom plugin system
+- Webhook notifications
+- REST API v2
+
+# Logical Dependency Chain
+
+## Foundation Layer (Must be built first)
+1. Core types and interfaces - Everything depends on these
+2. Communication protocol - Required for Driver-Worker interaction
+3. Basic Driver implementation - Central coordinator needed
+4. Basic Worker implementation - Task executors needed
+5. Local process runner - Simplest execution environment
+
+## Execution Layer (Builds on foundation)
+6. Task model and storage - Required for task management
+7. Task submission system - Entry point for users
+8. Task execution engine - Core functionality
+9. Artifact capture - Output collection
+10. CLI tool - User interface
+
+## Orchestration Layer (Enables scaling)
+11. Task graph planner - Dependency management
+12. Scheduler - Intelligent task distribution
+13. Worker pool management - Dynamic scaling
+14. Progress streaming - Real-time feedback
+15. Result aggregation - Output consolidation
+
+## Production Layer (Enterprise readiness)
+16. Container runners - Production deployment
+17. Observability - Monitoring and debugging
+18. Git integration - Workflow integration
+19. Security features - Enterprise requirements
+20. Web dashboard - Visual management
+
+# Risks and Mitigations
+
+## Technical Risks
+
+### Claude API Rate Limits
+Risk: Multiple Workers may hit API rate limits
+Mitigation: Implement token bucket algorithm, queue management, and exponential backoff
+
+### Worker Process Crashes
+Risk: Worker crashes could lose task progress
+Mitigation: Implement checkpointing, task state persistence, and automatic retry with resume
+
+### Network Partitions
+Risk: Driver-Worker communication disruption
+Mitigation: Implement heartbeat monitoring, reconnection logic, and graceful degradation
+
+### Resource Exhaustion
+Risk: Unbounded task execution could exhaust system resources
+Mitigation: Resource limits, quotas, circuit breakers, and monitoring alerts
+
+## Architectural Risks
+
+### Complexity Growth
+Risk: System becomes too complex to maintain
+Mitigation: Clear separation of concerns, comprehensive documentation, extensive testing
+
+### Performance Bottlenecks
+Risk: Driver becomes bottleneck for many Workers
+Mitigation: Horizontal scaling capability, async processing, caching layer
+
+### Integration Challenges
+Risk: Difficulty integrating with diverse development environments
+Mitigation: Plugin architecture, standard protocols, comprehensive SDK
+
+## Operational Risks
+
+### Debugging Complexity
+Risk: Hard to debug distributed task execution
+Mitigation: Distributed tracing, centralized logging, replay capability
+
+### Data Consistency
+Risk: Artifact corruption or loss
+Mitigation: Checksums, atomic operations, backup strategies
+
+# Appendix
+
+## Research Findings
+- Analysis of similar orchestration systems (Kubernetes Jobs, Apache Airflow)
+- Claude API capabilities and limitations study
+- Performance benchmarks of parallel vs sequential execution
+- Security best practices for multi-tenant systems
+
+## Technical Specifications
+- JSON-RPC 2.0 for communication protocol
+- TypeScript with strict mode for type safety
+- Jest for testing framework
+- Docker containers for isolation
+- Kubernetes for orchestration
+- OpenTelemetry for observability
+- PostgreSQL for state persistence (future)

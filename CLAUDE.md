@@ -11,19 +11,22 @@ ClaudeCluster is an open-source orchestration framework that transforms Claude C
 ## Architecture
 
 ### Core Components
+
 - **Driver**: Receives high-level goals, plans task graphs, and orchestrates execution
-- **Worker**: Runs isolated Claude Code sessions to execute specific tasks  
+- **Worker**: Runs isolated Claude Code sessions to execute specific tasks
 - **Task**: Well-scoped unit of work (scaffolding, refactoring, testing, documentation)
 - **Artifacts**: Outputs from tasks (diffs, files, logs, test results) captured by Driver
 
 ### Planned Runners
+
 - Local process-based runner
-- Docker runner  
+- Docker runner
 - Kubernetes runner
 
 ## Development Status
 
 This repository is in early design phase with:
+
 - Core documentation (README.md, docs/CONTRIBUTING.md)
 - Apache 2.0 license (LICENSE, NOTICE)
 - Multi-language .gitignore prepared for future implementations
@@ -39,6 +42,7 @@ This repository is in early design phase with:
 ## Contributing Guidelines
 
 From docs/CONTRIBUTING.md:
+
 - Use Developer Certificate of Origin (DCO) - sign commits with `git commit -s`
 - Follow conventional commit format: `feat(scope):`, `fix(scope):`, `docs(scope):`, etc.
 - Open Issues for discussion before major changes
@@ -47,6 +51,7 @@ From docs/CONTRIBUTING.md:
 ## Planned Technology Stack
 
 Based on README roadmap:
+
 - CLI tool: `claudecluster`
 - SDKs: TypeScript and Python planned
 - Observability: OpenTelemetry integration
@@ -57,8 +62,9 @@ Based on README roadmap:
 ## Development Environment
 
 The project includes comprehensive MCP server configuration for:
+
 - File system operations
-- Git operations  
+- Git operations
 - GitHub integration
 - Code analysis (Semgrep)
 - Documentation access
@@ -71,3 +77,8 @@ The project includes comprehensive MCP server configuration for:
 - No build/test commands available
 - No package managers (npm, pip, cargo, etc.) configured
 - Primary development currently focused on design and documentation
+
+## Task Master AI Instructions
+
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md
