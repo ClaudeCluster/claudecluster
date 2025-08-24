@@ -34,8 +34,41 @@ jobs:
           file_or_dir: '.github/'
           config_file: '.github/yamllint-config.yml'
 
-      - name: Check DCO sign-off
-        uses: tim-actions/dco@v1.1
+      - name: Check DCO sign-off  
+        run: |
+          # Check if all commits have DCO sign-off
+          echo "Checking DCO sign-off for commits in this PR..."
+          missing_dco=0
+          
+          # Get all commits in this branch that aren't in the base branch
+          commits=$(git log origin/develop..HEAD --pretty=format:"%H %s")
+          
+          if [ -z "$commits" ]; then
+            echo "✅ No commits to check"
+            exit 0
+          fi
+          
+          while IFS= read -r commit_line; do
+            commit_hash=$(echo "$commit_line" | cut -d' ' -f1)
+            commit_msg=$(git log -1 --pretty=format:"%B" "$commit_hash")
+            
+            if ! echo "$commit_msg" | grep -q "Signed-off-by:"; then
+              echo "❌ Commit $commit_hash is missing DCO sign-off"
+              echo "   Message: $(echo "$commit_line" | cut -d' ' -f2-)"
+              missing_dco=1
+            else
+              echo "✅ Commit $commit_hash has DCO sign-off"
+            fi
+          done <<< "$commits"
+          
+          if [ $missing_dco -eq 1 ]; then
+            echo ""
+            echo "Please sign your commits with: git commit --amend --signoff"
+            echo "Or for multiple commits: git rebase --signoff origin/develop"
+            exit 1
+          fi
+          
+          echo "✅ All commits have DCO sign-off"
 
   security-scan:
     runs-on: ubuntu-latest
