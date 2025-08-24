@@ -46,6 +46,10 @@ build/
 coverage/
 .nyc_output/
 
+# TypeScript build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
 # Python
 __pycache__/
 *.py[cod]
