@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/ClaudeCluster/claudecluster/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/ClaudeCluster/claudecluster/blob/main/README.md
+    about: Check the documentation for help and guides
+  - name: 🔒 Security Issues
+    url: https://github.com/ClaudeCluster/claudecluster/security/policy
+    about: Report security vulnerabilities privately

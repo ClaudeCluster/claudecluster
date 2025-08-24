@@ -1,0 +1,18 @@
+# Global owners - these users will be requested for review on all PRs
+* @ClaudeCluster/maintainers
+
+# Documentation
+*.md @ClaudeCluster/maintainers
+/docs/ @ClaudeCluster/maintainers
+
+# Configuration files
+.github/ @ClaudeCluster/maintainers
+.gitignore @ClaudeCluster/maintainers
+*.json @ClaudeCluster/maintainers
+*.yml @ClaudeCluster/maintainers
+*.yaml @ClaudeCluster/maintainers
+
+# Security and governance
+SECURITY.md @ClaudeCluster/maintainers
+LICENSE @ClaudeCluster/maintainers
+CONTRIBUTING.md @ClaudeCluster/maintainers

@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    name: Lint and Validate
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Markdown Links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          config-file: '.github/workflows/markdown-link-config.json'
+
+      - name: Lint YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: '.github/'
+          config_file: '.github/workflows/yamllint-config.yml'
+
+      - name: Check DCO sign-off
+        uses: tim-actions/dco@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  file-structure-check:
+    runs-on: ubuntu-latest
+    name: File Structure Check
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required files
+        run: |
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "CLAUDE.md"
+            ".gitignore"
+            ".env.mcp.example"
+            ".mcp.json.example"
+          )
+          
+          missing_files=()
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              missing_files+=("$file")
+            fi
+          done
+          
+          if [[ ${#missing_files[@]} -gt 0 ]]; then
+            echo "❌ Missing required files:"
+            printf '%s\n' "${missing_files[@]}"
+            exit 1
+          else
+            echo "✅ All required files present"
+          fi
+
+      - name: Check sensitive files are not committed
+        run: |
+          sensitive_files=(
+            ".env.mcp"
+            ".mcp.json"
+          )
+          
+          found_sensitive=()
+          for file in "${sensitive_files[@]}"; do
+            if [[ -f "$file" ]]; then
+              found_sensitive+=("$file")
+            fi
+          done
+          
+          if [[ ${#found_sensitive[@]} -gt 0 ]]; then
+            echo "❌ Sensitive files found in repository:"
+            printf '%s\n' "${found_sensitive[@]}"
+            echo "These files should be in .gitignore and not committed"
+            exit 1
+          else
+            echo "✅ No sensitive files committed"
+          fi
