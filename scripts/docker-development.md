@@ -574,7 +574,7 @@ docker stats
 
 After successfully setting up local Docker development:
 
-1. **Deploy to Cloud** - See [Cloud Run Deployment](./cloud-run-deployment.md)
-2. **Production Setup** - See [Production Configuration](./production.md)
+1. **Deploy to Cloud** - Cloud Run Deployment (coming soon)
+2. **Production Setup** - Production Configuration (coming soon)
 3. **Monitoring** - Set up logging and metrics collection
 4. **CI/CD** - Integrate Docker builds into your CI/CD pipeline
