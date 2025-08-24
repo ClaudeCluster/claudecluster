@@ -222,7 +222,7 @@ jobs:
           chmod +x ./scripts/test-e2e.sh
           ./scripts/test-e2e.sh \
             --cloud \
-            --server-url=${{ secrets.TEST_MCP_SERVER_URL || 
+            --server-url=${{ secrets.TEST_MCP_SERVER_URL ||
               'https://claudecluster-mcp-e2e-test-abc123.run.app' }} \
             --test-suite=${{ matrix.test-suite }} \
             --ci \
