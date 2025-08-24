@@ -13,4 +13,3 @@ rules:
     max-end: 1
   truthy:
     allowed-values: ['true', 'false', 'on', 'off']
-
