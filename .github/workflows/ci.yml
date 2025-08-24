@@ -73,7 +73,7 @@ jobs:
           required_files=(
             "README.md"
             "LICENSE"
-            "CONTRIBUTING.md"
+            "docs/CONTRIBUTING.md"
             "CLAUDE.md"
             ".gitignore"
             ".env.mcp.example"

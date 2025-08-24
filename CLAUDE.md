@@ -24,7 +24,7 @@ ClaudeCluster is an open-source orchestration framework that transforms Claude C
 ## Development Status
 
 This repository is in early design phase with:
-- Core documentation (README.md, CONTRIBUTING.md)
+- Core documentation (README.md, docs/CONTRIBUTING.md)
 - Apache 2.0 license (LICENSE, NOTICE)
 - Multi-language .gitignore prepared for future implementations
 - MCP (Model Context Protocol) configuration for development tooling
@@ -32,13 +32,13 @@ This repository is in early design phase with:
 ## Key Files
 
 - `README.md`: Project overview, architecture diagrams, roadmap
-- `CONTRIBUTING.md`: Contribution guidelines with DCO requirements, conventional commits
+- `docs/CONTRIBUTING.md`: Contribution guidelines with DCO requirements, conventional commits
 - `.mcp.json`: Extensive MCP server configuration for development tooling
 - `.env.mcp`: Environment variables for MCP servers (contains sensitive data)
 
 ## Contributing Guidelines
 
-From CONTRIBUTING.md:
+From docs/CONTRIBUTING.md:
 - Use Developer Certificate of Origin (DCO) - sign commits with `git commit -s`
 - Follow conventional commit format: `feat(scope):`, `fix(scope):`, `docs(scope):`, etc.
 - Open Issues for discussion before major changes
