@@ -1,0 +1,10 @@
+# Apps Directory
+
+This directory will contain ClaudeCluster applications in future development phases.
+
+Planned applications:
+- web-dashboard: Web-based management interface for ClaudeCluster
+- desktop-client: Desktop application for local cluster management
+- mobile-companion: Mobile app for monitoring cluster status
+
+Currently empty - applications will be developed in upcoming phases.

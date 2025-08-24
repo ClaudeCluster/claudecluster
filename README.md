@@ -17,9 +17,11 @@ claudecluster/
 │   ├── worker/        # Worker implementation
 │   ├── driver/        # Driver orchestration
 │   └── shared/        # Shared utilities and config
-├── apps/              # Applications
-│   └── taskmaster/    # Task Master AI dashboard (web app)
-├── tools/             # Development tools
+├── apps/              # Applications (future development)
+│   ├── web-dashboard/ # Web management interface (planned)
+│   └── desktop-client/# Desktop application (planned)
+├── tools/             # Development and project management tools
+│   ├── taskmaster/    # Task Master MCP - project planning tool
 │   ├── cli/           # Command line interface
 │   └── setup/         # Setup and configuration scripts
 └── docs/              # Documentation
@@ -238,15 +240,27 @@ The Task Master AI provides a web-based dashboard for managing ClaudeCluster tas
 
 ## 🚀 Roadmap
 
+### Phase 1: Infrastructure ✅
 - [x] Monorepo structure and tooling
-- [x] Core framework types and interfaces
-- [x] Task Master AI dashboard
-- [x] CLI interface
+- [x] Enterprise-grade development toolchain
+- [x] CI/CD pipeline with quality gates
+- [x] Documentation and architecture design
+
+### Phase 2: Core Framework (Next)
+- [ ] Core framework implementation
 - [ ] Worker implementation
-- [ ] Driver orchestration
+- [ ] Driver orchestration logic
 - [ ] Claude API integration
+- [ ] Task execution engine
+
+### Phase 3: Applications (Future)
+- [ ] Web dashboard application
+- [ ] Desktop client application
+- [ ] Mobile companion app
+- [ ] CLI enhancements
+
+### Phase 4: Production Features (Future)
 - [ ] Docker and Kubernetes runners
-- [ ] Web dashboard improvements
 - [ ] Git integrations (PRs, review summaries)
 - [ ] Secrets management + policy guardrails
 - [ ] Observability (metrics, traces)
