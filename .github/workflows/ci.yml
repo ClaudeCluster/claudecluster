@@ -64,7 +64,7 @@ jobs:
               echo "⏭️  Skipping merge commit $commit_hash"
               continue
             fi
-            
+
             if ! echo "$commit_msg" | grep -q "Signed-off-by:"; then
               echo "❌ Commit $commit_hash is missing DCO sign-off"
               echo "   Message: $(echo "$commit_line" | cut -d' ' -f2-)"
