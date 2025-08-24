@@ -10,3 +10,4 @@ rules:
   comments-indentation: disable
   truthy:
     allowed-values: ['true', 'false', 'on', 'off']
+
