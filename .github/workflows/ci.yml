@@ -40,8 +40,15 @@ jobs:
           echo "Checking DCO sign-off for commits in this PR..."
           missing_dco=0
 
-          # Get all commits in this branch that aren't in the base branch
-          commits=$(git log origin/develop..HEAD --pretty=format:"%H %s")
+          # For pull requests, fetch base branch and check commits
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Checking commits from PR..."
+            git fetch origin ${{ github.base_ref }}
+            commits=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%H %s")
+          else
+            echo "Checking recent commits..."
+            commits=$(git log --pretty=format:"%H %s" -n 5)
+          fi
 
           if [ -z "$commits" ]; then
             echo "✅ No commits to check"
@@ -64,7 +71,7 @@ jobs:
           if [ $missing_dco -eq 1 ]; then
             echo ""
             echo "Please sign your commits with: git commit --amend --signoff"
-            echo "Or for multiple commits: git rebase --signoff origin/develop"
+            echo "For multiple commits: git rebase --signoff HEAD~N"
             exit 1
           fi
 
