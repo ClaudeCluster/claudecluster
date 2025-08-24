@@ -1,3 +1,4 @@
+---
 name: Feature Request
 description: Suggest an idea for ClaudeCluster
 title: "[Feature]: "
@@ -13,26 +14,26 @@ body:
     id: existing-issues
     attributes:
       label: Is there an existing issue for this?
-      description: Please search to see if a feature request already exists for your idea.
+      description: Please search to see if a feature request already exists.
       options:
-      - label: I have searched the existing issues
-        required: true
+        - label: I have searched the existing issues
+          required: true
 
   - type: textarea
-    id: problem-description
+    id: problem
     attributes:
       label: Problem Description
       description: Is your feature request related to a problem? Please describe.
-      placeholder: I'm frustrated when...
+      placeholder: A clear and concise description of what the problem is.
     validations:
       required: true
 
   - type: textarea
-    id: proposed-solution
+    id: solution
     attributes:
       label: Proposed Solution
-      description: Describe the solution you'd like to see implemented.
-      placeholder: I would like...
+      description: Describe the solution you'd like to see.
+      placeholder: A clear and concise description of what you want to happen.
     validations:
       required: true
 
@@ -41,25 +42,13 @@ body:
     attributes:
       label: Alternatives Considered
       description: Describe any alternative solutions or features you've considered.
-      placeholder: A clear and concise description of any alternative solutions...
+      placeholder: A clear and concise description of any alternative solutions.
 
-  - type: dropdown
-    id: feature-area
+  - type: textarea
+    id: additional-context
     attributes:
-      label: Feature Area
-      description: Which area of ClaudeCluster does this feature relate to?
-      options:
-        - Driver (Task orchestration)
-        - Worker (Task execution)
-        - CLI Interface
-        - Web Dashboard
-        - API
-        - Docker/Kubernetes Integration
-        - Documentation
-        - Testing
-        - Other
-    validations:
-      required: true
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request.
 
   - type: dropdown
     id: priority
@@ -70,15 +59,9 @@ body:
         - Low - Nice to have
         - Medium - Would be helpful
         - High - Important for my use case
-        - Critical - Blocking my adoption
+        - Critical - Blocking my use case
     validations:
       required: true
-
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: Additional Context
-      description: Add any other context, screenshots, or examples about the feature request here.
 
   - type: checkboxes
     id: terms
