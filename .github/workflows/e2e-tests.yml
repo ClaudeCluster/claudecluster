@@ -1,10 +1,11 @@
+---
 name: E2E Tests
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   schedule:
     # Run daily at 2 AM UTC
     - cron: '0 2 * * *'
@@ -16,20 +17,20 @@ on:
         default: 'smoke'
         type: choice
         options:
-        - smoke
-        - integration
-        - resilience
-        - performance
-        - all
+          - smoke
+          - integration
+          - resilience
+          - performance
+          - all
       deployment_target:
         description: 'Deployment target'
         required: false
         default: 'local'
         type: choice
         options:
-        - local
-        - cloud
-        - both
+          - local
+          - cloud
+          - both
 
 env:
   NODE_VERSION: '18'
@@ -40,323 +41,324 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.deployment_target != 'cloud' }}
     timeout-minutes: 30
-    
+
     strategy:
       matrix:
-        test-suite: 
+        test-suite:
           - ${{ github.event.inputs.test_suite || 'smoke' }}
       fail-fast: false
-    
+
     services:
       # We'll start our own services with docker-compose
       # to have better control over the environment
-      
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: ${{ env.PNPM_VERSION }}
-        run_install: false
-        
-    - name: Get pnpm store directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-        
-    - name: Setup pnpm cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-          
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-      
-    - name: Build project
-      run: pnpm build
-      
-    - name: Start local services
-      run: |
-        echo "Starting ClaudeCluster services..."
-        docker compose up -d
-        
-        # Wait for services to be healthy
-        echo "Waiting for services to start..."
-        sleep 15
-        
-        # Check service health
-        timeout 120 bash -c 'until curl -sf http://localhost:3000/health; do echo "Waiting for MCP server..."; sleep 5; done'
-        echo "✅ MCP server is ready"
-        
-        # Optional: Check worker health
-        curl -sf http://localhost:3001/health || echo "⚠️ Worker 1 not healthy"
-        curl -sf http://localhost:3002/health || echo "⚠️ Worker 2 not healthy"
-        
-    - name: Run E2E tests
-      run: |
-        chmod +x ./scripts/test-e2e.sh
-        ./scripts/test-e2e.sh \
-          --local \
-          --test-suite=${{ matrix.test-suite }} \
-          --ci \
-          --junit \
-          --timeout=300 \
-          --parallel-workers=2 \
-          --retries=1 \
-          --output-dir=./test-results
-      env:
-        CI: true
-        TEST_VERBOSE: false
-        
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: e2e-test-results-local-${{ matrix.test-suite }}
-        path: |
-          test-results/
-          *.log
-        retention-days: 30
-        
-    - name: Publish test results
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        name: E2E Tests (Local - ${{ matrix.test-suite }})
-        path: 'test-results/e2e-results.xml'
-        reporter: jest-junit
-        fail-on-error: true
-        
-    - name: Collect service logs
-      if: failure()
-      run: |
-        echo "=== MCP Server Logs ==="
-        docker compose logs mcp-server || true
-        echo "=== Worker Logs ==="
-        docker compose logs claudecluster-worker-1 || true
-        docker compose logs claudecluster-worker-2 || true
-        
-    - name: Cleanup services
-      if: always()
-      run: |
-        docker compose down -v
-        docker system prune -f
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Start local services
+        run: |
+          echo "Starting ClaudeCluster services..."
+          docker compose up -d
+
+          # Wait for services to be healthy
+          echo "Waiting for services to start..."
+          sleep 15
+
+          # Check service health
+          timeout 120 bash -c 'until curl -sf http://localhost:3000/health; do echo "Waiting for MCP server..."; sleep 5; done'
+          echo "✅ MCP server is ready"
+
+          # Optional: Check worker health
+          curl -sf http://localhost:3001/health || echo "⚠️ Worker 1 not healthy"
+          curl -sf http://localhost:3002/health || echo "⚠️ Worker 2 not healthy"
+
+      - name: Run E2E tests
+        run: |
+          chmod +x ./scripts/test-e2e.sh
+          ./scripts/test-e2e.sh \
+            --local \
+            --test-suite=${{ matrix.test-suite }} \
+            --ci \
+            --junit \
+            --timeout=300 \
+            --parallel-workers=2 \
+            --retries=1 \
+            --output-dir=./test-results
+        env:
+          CI: true
+          TEST_VERBOSE: false
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results-local-${{ matrix.test-suite }}
+          path: |
+            test-results/
+            *.log
+          retention-days: 30
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: E2E Tests (Local - ${{ matrix.test-suite }})
+          path: 'test-results/e2e-results.xml'
+          reporter: jest-junit
+          fail-on-error: true
+
+      - name: Collect service logs
+        if: failure()
+        run: |
+          echo "=== MCP Server Logs ==="
+          docker compose logs mcp-server || true
+          echo "=== Worker Logs ==="
+          docker compose logs claudecluster-worker-1 || true
+          docker compose logs claudecluster-worker-2 || true
+
+      - name: Cleanup services
+        if: always()
+        run: |
+          docker compose down -v
+          docker system prune -f
 
   e2e-cloud:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.deployment_target == 'cloud' || github.event.inputs.deployment_target == 'both' }}
     timeout-minutes: 45
-    
+
     strategy:
       matrix:
-        test-suite: 
+        test-suite:
           - ${{ github.event.inputs.test_suite || 'smoke' }}
       fail-fast: false
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: ${{ env.PNPM_VERSION }}
-        run_install: false
-        
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-      
-    - name: Authenticate to Google Cloud
-      if: ${{ secrets.GCP_SA_KEY }}
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        
-    - name: Set up Google Cloud SDK
-      if: ${{ secrets.GCP_SA_KEY }}
-      uses: google-github-actions/setup-gcloud@v2
-      
-    - name: Deploy to Cloud (if needed)
-      if: ${{ secrets.GCP_SA_KEY && github.event_name == 'workflow_dispatch' }}
-      run: |
-        # Optional: Deploy fresh instances for testing
-        echo "Deploying test environment to Google Cloud..."
-        
-        # Deploy MCP Server
-        ./scripts/deploy-mcp-gcloud.sh \
-          --project-id=${{ secrets.GCP_PROJECT_ID }} \
-          --environment=e2e-test \
-          --region=us-central1
-          
-        # Deploy Worker
-        ./scripts/deploy-worker-gcloud.sh \
-          --project-id=${{ secrets.GCP_PROJECT_ID }} \
-          --environment=e2e-test \
-          --region=us-central1
-        
-        # Wait for deployments
-        sleep 30
-      env:
-        GOOGLE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        
-    - name: Run Cloud E2E tests
-      run: |
-        chmod +x ./scripts/test-e2e.sh
-        ./scripts/test-e2e.sh \
-          --cloud \
-          --server-url=${{ secrets.TEST_MCP_SERVER_URL || 'https://claudecluster-mcp-e2e-test-abc123.run.app' }} \
-          --test-suite=${{ matrix.test-suite }} \
-          --ci \
-          --junit \
-          --timeout=600 \
-          --parallel-workers=1 \
-          --retries=2 \
-          --output-dir=./test-results
-      env:
-        CI: true
-        TEST_VERBOSE: true
-        TEST_MCP_SERVER_URL: ${{ secrets.TEST_MCP_SERVER_URL }}
-        TEST_WORKER_URLS: ${{ secrets.TEST_WORKER_URLS }}
-        
-    - name: Upload cloud test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: e2e-test-results-cloud-${{ matrix.test-suite }}
-        path: |
-          test-results/
-          *.log
-        retention-days: 30
-        
-    - name: Publish cloud test results
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        name: E2E Tests (Cloud - ${{ matrix.test-suite }})
-        path: 'test-results/e2e-results.xml'
-        reporter: jest-junit
-        fail-on-error: true
-        
-    - name: Cleanup cloud resources
-      if: ${{ always() && secrets.GCP_SA_KEY && github.event_name == 'workflow_dispatch' }}
-      run: |
-        # Optional: Clean up test deployments
-        echo "Cleaning up test environment..."
-        gcloud run services delete claudecluster-mcp-e2e-test --region=us-central1 --quiet || true
-        gcloud run services delete claudecluster-worker-e2e-test --region=us-central1 --quiet || true
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate to Google Cloud
+        if: ${{ secrets.GCP_SA_KEY }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        if: ${{ secrets.GCP_SA_KEY }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud (if needed)
+        if: ${{ secrets.GCP_SA_KEY && github.event_name == 'workflow_dispatch' }}
+        run: |
+          # Optional: Deploy fresh instances for testing
+          echo "Deploying test environment to Google Cloud..."
+
+          # Deploy MCP Server
+          ./scripts/deploy-mcp-gcloud.sh \
+            --project-id=${{ secrets.GCP_PROJECT_ID }} \
+            --environment=e2e-test \
+            --region=us-central1
+
+          # Deploy Worker
+          ./scripts/deploy-worker-gcloud.sh \
+            --project-id=${{ secrets.GCP_PROJECT_ID }} \
+            --environment=e2e-test \
+            --region=us-central1
+
+          # Wait for deployments
+          sleep 30
+        env:
+          GOOGLE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Run Cloud E2E tests
+        run: |
+          chmod +x ./scripts/test-e2e.sh
+          ./scripts/test-e2e.sh \
+            --cloud \
+            --server-url=${{ secrets.TEST_MCP_SERVER_URL || 
+              'https://claudecluster-mcp-e2e-test-abc123.run.app' }} \
+            --test-suite=${{ matrix.test-suite }} \
+            --ci \
+            --junit \
+            --timeout=600 \
+            --parallel-workers=1 \
+            --retries=2 \
+            --output-dir=./test-results
+        env:
+          CI: true
+          TEST_VERBOSE: true
+          TEST_MCP_SERVER_URL: ${{ secrets.TEST_MCP_SERVER_URL }}
+          TEST_WORKER_URLS: ${{ secrets.TEST_WORKER_URLS }}
+
+      - name: Upload cloud test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results-cloud-${{ matrix.test-suite }}
+          path: |
+            test-results/
+            *.log
+          retention-days: 30
+
+      - name: Publish cloud test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: E2E Tests (Cloud - ${{ matrix.test-suite }})
+          path: 'test-results/e2e-results.xml'
+          reporter: jest-junit
+          fail-on-error: true
+
+      - name: Cleanup cloud resources
+        if: ${{ always() && secrets.GCP_SA_KEY && github.event_name == 'workflow_dispatch' }}
+        run: |
+          # Optional: Clean up test deployments
+          echo "Cleaning up test environment..."
+          gcloud run services delete claudecluster-mcp-e2e-test --region=us-central1 --quiet || true
+          gcloud run services delete claudecluster-worker-e2e-test --region=us-central1 --quiet || true
 
   smoke-test-matrix:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'schedule' }}
     timeout-minutes: 60
-    
+
     strategy:
       matrix:
         environment: [local, cloud]
         node-version: ['16', '18', '20']
       fail-fast: false
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: ${{ env.PNPM_VERSION }}
-        run_install: false
-        
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-      
-    - name: Build project
-      run: pnpm build
-      
-    - name: Setup environment
-      run: |
-        if [ "${{ matrix.environment }}" = "local" ]; then
-          docker compose up -d
-          sleep 15
-          timeout 120 bash -c 'until curl -sf http://localhost:3000/health; do sleep 5; done'
-        fi
-        
-    - name: Run smoke tests
-      run: |
-        chmod +x ./scripts/test-e2e.sh
-        
-        if [ "${{ matrix.environment }}" = "local" ]; then
-          ./scripts/test-e2e.sh --local --test-suite=smoke --ci --junit --timeout=300
-        else
-          ./scripts/test-e2e.sh --cloud --test-suite=smoke --ci --junit --timeout=600
-        fi
-      env:
-        CI: true
-        TEST_MCP_SERVER_URL: ${{ secrets.TEST_MCP_SERVER_URL }}
-        TEST_WORKER_URLS: ${{ secrets.TEST_WORKER_URLS }}
-        
-    - name: Cleanup
-      if: always()
-      run: |
-        if [ "${{ matrix.environment }}" = "local" ]; then
-          docker compose down -v
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Setup environment
+        run: |
+          if [ "${{ matrix.environment }}" = "local" ]; then
+            docker compose up -d
+            sleep 15
+            timeout 120 bash -c 'until curl -sf http://localhost:3000/health; do sleep 5; done'
+          fi
+
+      - name: Run smoke tests
+        run: |
+          chmod +x ./scripts/test-e2e.sh
+
+          if [ "${{ matrix.environment }}" = "local" ]; then
+            ./scripts/test-e2e.sh --local --test-suite=smoke --ci --junit --timeout=300
+          else
+            ./scripts/test-e2e.sh --cloud --test-suite=smoke --ci --junit --timeout=600
+          fi
+        env:
+          CI: true
+          TEST_MCP_SERVER_URL: ${{ secrets.TEST_MCP_SERVER_URL }}
+          TEST_WORKER_URLS: ${{ secrets.TEST_WORKER_URLS }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ "${{ matrix.environment }}" = "local" ]; then
+            docker compose down -v
+          fi
 
   test-summary:
     runs-on: ubuntu-latest
     if: always()
     needs: [e2e-local, e2e-cloud]
-    
+
     steps:
-    - name: Download all test results
-      uses: actions/download-artifact@v4
-      with:
-        path: all-test-results
-        
-    - name: Generate test summary
-      run: |
-        echo "# E2E Test Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-        
-        # Count result files
-        local_results=$(find all-test-results -name "*local*" -type d | wc -l)
-        cloud_results=$(find all-test-results -name "*cloud*" -type d | wc -l)
-        
-        echo "- Local test runs: $local_results" >> $GITHUB_STEP_SUMMARY
-        echo "- Cloud test runs: $cloud_results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        # Show status of each job
-        echo "## Job Status" >> $GITHUB_STEP_SUMMARY
-        echo "- Local E2E: ${{ needs.e2e-local.result }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Cloud E2E: ${{ needs.e2e-cloud.result }}" >> $GITHUB_STEP_SUMMARY
-        
-        # Add links to artifacts if they exist
-        if [ -d "all-test-results" ]; then
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results
+
+      - name: Generate test summary
+        run: |
+          echo "# E2E Test Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Test Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "Test results and logs are available in the workflow artifacts." >> $GITHUB_STEP_SUMMARY
-        fi
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+
+          # Count result files
+          local_results=$(find all-test-results -name "*local*" -type d | wc -l)
+          cloud_results=$(find all-test-results -name "*cloud*" -type d | wc -l)
+
+          echo "- Local test runs: $local_results" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloud test runs: $cloud_results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show status of each job
+          echo "## Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Local E2E: ${{ needs.e2e-local.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloud E2E: ${{ needs.e2e-cloud.result }}" >> $GITHUB_STEP_SUMMARY
+
+          # Add links to artifacts if they exist
+          if [ -d "all-test-results" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Test Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "Test results and logs are available in the workflow artifacts." >> $GITHUB_STEP_SUMMARY
+          fi
