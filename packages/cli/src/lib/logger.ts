@@ -1,0 +1,12 @@
+/**
+ * Logger configuration for CLI
+ */
+
+import winston from 'winston';\nimport chalk from 'chalk';
+
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+
+export function setupLogger(level: LogLevel = 'info'): winston.Logger {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Create custom format for console output\n  const consoleFormat = winston.format.combine(\n    winston.format.timestamp({ format: 'HH:mm:ss' }),\n    winston.format.errors({ stack: true }),\n    winston.format.printf((info) => {\n      const { timestamp, level, message, ...meta } = info;\n      \n      // Color code the level\n      let coloredLevel = level;\n      switch (level) {\n        case 'error':\n          coloredLevel = chalk.red(level);\n          break;\n        case 'warn':\n          coloredLevel = chalk.yellow(level);\n          break;\n        case 'info':\n          coloredLevel = chalk.blue(level);\n          break;\n        case 'debug':\n          coloredLevel = chalk.gray(level);\n          break;\n      }\n      \n      let output = `${chalk.gray(timestamp)} ${coloredLevel}: ${message}`;\n      \n      // Add metadata if present\n      if (Object.keys(meta).length > 0) {\n        output += '\\n' + chalk.gray(JSON.stringify(meta, null, 2));\n      }\n      \n      return output;\n    })\n  );\n  \n  // Create logger with console transport\n  const logger = winston.createLogger({\n    level,\n    format: winston.format.combine(\n      winston.format.timestamp(),\n      winston.format.errors({ stack: true }),\n      winston.format.json()\n    ),\n    transports: [\n      new winston.transports.Console({\n        format: consoleFormat,\n        silent: process.env.NODE_ENV === 'test'\n      })\n    ],\n    // Prevent winston from exiting on error\n    exitOnError: false\n  });\n  \n  // Add file transport in development\n  if (isDevelopment) {\n    logger.add(new winston.transports.File({\n      filename: 'claudecluster-cli.log',\n      level: 'debug',\n      format: winston.format.combine(\n        winston.format.timestamp(),\n        winston.format.json()\n      )\n    }));\n  }\n  \n  return logger;\n}\n\n// Default logger instance\nexport const logger = setupLogger();
