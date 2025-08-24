@@ -1,0 +1,340 @@
+version: '3.8'
+
+services:
+  # Simple MCP Server Demo - Mock service to demonstrate architecture
+  mcp-server-demo:
+    image: node:18-alpine
+    container_name: claudecluster-mcp-demo
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    command: |
+      sh -c "
+        echo 'Creating demo MCP server...'
+        cat > server.js << 'EOF'
+        const http = require('http');
+        
+        const server = http.createServer((req, res) => {
+          const url = req.url;
+          const method = req.method;
+          
+          // Enable CORS
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          res.setHeader('Content-Type', 'application/json');
+          
+          if (method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+          }
+          
+          console.log('📨 Request:', method, url);
+          
+          if (url === '/health') {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              status: 'healthy',
+              service: 'ClaudeCluster MCP Server',
+              timestamp: new Date().toISOString(),
+              uptime: process.uptime(),
+              version: '0.1.0',
+              workers: {
+                total: 2,
+                available: 2,
+                offline: 0
+              },
+              systemInfo: {
+                nodeVersion: process.version,
+                platform: process.platform,
+                memoryUsage: process.memoryUsage()
+              }
+            }));
+          } else if (url === '/workers') {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              workers: [
+                {
+                  id: 'worker-1',
+                  url: 'http://worker-1-demo:3001',
+                  status: 'available',
+                  activeTasks: 0,
+                  totalTasksExecuted: Math.floor(Math.random() * 100)
+                },
+                {
+                  id: 'worker-2',
+                  url: 'http://worker-2-demo:3001', 
+                  status: 'available',
+                  activeTasks: 0,
+                  totalTasksExecuted: Math.floor(Math.random() * 100)
+                }
+              ],
+              totalWorkers: 2,
+              availableWorkers: 2
+            }));
+          } else if (url === '/tasks' && method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body);
+                const taskId = 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+                const assignedWorker = Math.random() > 0.5 ? 'worker-1' : 'worker-2';
+                
+                console.log('🚀 New task submitted:', { taskId, prompt: data.prompt?.substring(0, 50) + '...' });
+                
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                  success: true,
+                  taskId: taskId,
+                  status: 'accepted',
+                  assignedWorker: assignedWorker,
+                  message: 'Task submitted successfully and assigned to worker',
+                  estimatedCompletion: new Date(Date.now() + 30000).toISOString()
+                }));
+              } catch (error) {
+                res.writeHead(400);
+                res.end(JSON.stringify({
+                  success: false,
+                  error: 'Invalid JSON payload'
+                }));
+              }
+            });
+          } else if (url.startsWith('/tasks/') && url.endsWith('/status')) {
+            const taskId = url.split('/')[2];
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              taskId: taskId,
+              status: Math.random() > 0.3 ? 'completed' : 'in_progress',
+              progress: Math.floor(Math.random() * 100),
+              assignedWorker: 'worker-' + (Math.random() > 0.5 ? '1' : '2'),
+              output: 'Sample task execution output...',
+              createdAt: new Date(Date.now() - 60000).toISOString(),
+              updatedAt: new Date().toISOString()
+            }));
+          } else {
+            res.writeHead(404);
+            res.end(JSON.stringify({
+              error: 'Not found',
+              availableEndpoints: ['/health', '/workers', '/tasks (POST)', '/tasks/{id}/status']
+            }));
+          }
+        });
+        
+        const PORT = process.env.PORT || 3000;
+        server.listen(PORT, '0.0.0.0', () => {
+          console.log('🚀 ClaudeCluster MCP Server Demo running on port ' + PORT);
+          console.log('📊 Available endpoints:');
+          console.log('  - GET  /health');
+          console.log('  - GET  /workers');
+          console.log('  - POST /tasks');
+          console.log('  - GET  /tasks/{id}/status');
+        });
+        EOF
+        
+        node server.js
+      "
+    environment:
+      - PORT=3000
+      - NODE_ENV=demo
+    networks:
+      - claudecluster-network
+
+  # Worker 1 Demo
+  worker-1-demo:
+    image: node:18-alpine
+    container_name: claudecluster-worker-1-demo
+    ports:
+      - "3001:3001"
+    working_dir: /app
+    command: |
+      sh -c "
+        echo 'Creating demo Worker 1...'
+        cat > worker.js << 'EOF'
+        const http = require('http');
+        
+        const server = http.createServer((req, res) => {
+          const url = req.url;
+          const method = req.method;
+          
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          res.setHeader('Content-Type', 'application/json');
+          
+          if (method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+          }
+          
+          console.log('👷 Worker 1 request:', method, url);
+          
+          if (url === '/health') {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              status: 'healthy',
+              service: 'ClaudeCluster Worker 1',
+              workerId: 'worker-1',
+              timestamp: new Date().toISOString(),
+              uptime: process.uptime(),
+              activeTasks: Math.floor(Math.random() * 3),
+              totalTasksExecuted: Math.floor(Math.random() * 100),
+              capabilities: {
+                maxConcurrentTasks: 5,
+                supportedCommands: ['run', 'exec', 'shell'],
+                version: '0.1.0'
+              }
+            }));
+          } else if (url === '/execute' && method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body);
+                console.log('⚡ Executing task:', data.command?.substring(0, 50));
+                
+                // Simulate task execution
+                setTimeout(() => {
+                  res.writeHead(200);
+                  res.end(JSON.stringify({
+                    success: true,
+                    taskId: data.taskId || 'demo-task-' + Date.now(),
+                    command: data.command,
+                    output: 'Demo execution output: ' + (data.command || 'echo hello'),
+                    exitCode: 0,
+                    executionTime: Math.floor(Math.random() * 5000),
+                    timestamp: new Date().toISOString()
+                  }));
+                }, 1000 + Math.random() * 2000); // 1-3 second delay
+              } catch (error) {
+                res.writeHead(400);
+                res.end(JSON.stringify({
+                  success: false,
+                  error: 'Invalid request payload'
+                }));
+              }
+            });
+          } else {
+            res.writeHead(404);
+            res.end(JSON.stringify({
+              error: 'Not found',
+              availableEndpoints: ['/health', '/execute (POST)']
+            }));
+          }
+        });
+        
+        server.listen(3001, '0.0.0.0', () => {
+          console.log('👷 ClaudeCluster Worker 1 Demo running on port 3001');
+        });
+        EOF
+        
+        node worker.js
+      "
+    environment:
+      - PORT=3001
+      - WORKER_ID=worker-1
+    networks:
+      - claudecluster-network
+
+  # Worker 2 Demo
+  worker-2-demo:
+    image: node:18-alpine
+    container_name: claudecluster-worker-2-demo
+    ports:
+      - "3002:3001"
+    working_dir: /app
+    command: |
+      sh -c "
+        echo 'Creating demo Worker 2...'
+        cat > worker.js << 'EOF'
+        const http = require('http');
+        
+        const server = http.createServer((req, res) => {
+          const url = req.url;
+          const method = req.method;
+          
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          res.setHeader('Content-Type', 'application/json');
+          
+          if (method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+          }
+          
+          console.log('👷 Worker 2 request:', method, url);
+          
+          if (url === '/health') {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              status: 'healthy',
+              service: 'ClaudeCluster Worker 2',
+              workerId: 'worker-2', 
+              timestamp: new Date().toISOString(),
+              uptime: process.uptime(),
+              activeTasks: Math.floor(Math.random() * 3),
+              totalTasksExecuted: Math.floor(Math.random() * 150),
+              capabilities: {
+                maxConcurrentTasks: 5,
+                supportedCommands: ['run', 'exec', 'shell'],
+                version: '0.1.0'
+              }
+            }));
+          } else if (url === '/execute' && method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body);
+                console.log('⚡ Executing task:', data.command?.substring(0, 50));
+                
+                setTimeout(() => {
+                  res.writeHead(200);
+                  res.end(JSON.stringify({
+                    success: true,
+                    taskId: data.taskId || 'demo-task-' + Date.now(),
+                    command: data.command,
+                    output: 'Demo execution output from Worker 2: ' + (data.command || 'echo hello'),
+                    exitCode: 0,
+                    executionTime: Math.floor(Math.random() * 4000),
+                    timestamp: new Date().toISOString()
+                  }));
+                }, 800 + Math.random() * 2000);
+              } catch (error) {
+                res.writeHead(400);
+                res.end(JSON.stringify({
+                  success: false,
+                  error: 'Invalid request payload'
+                }));
+              }
+            });
+          } else {
+            res.writeHead(404);
+            res.end(JSON.stringify({
+              error: 'Not found',
+              availableEndpoints: ['/health', '/execute (POST)']
+            }));
+          }
+        });
+        
+        server.listen(3001, '0.0.0.0', () => {
+          console.log('👷 ClaudeCluster Worker 2 Demo running on port 3001 (mapped to 3002)');
+        });
+        EOF
+        
+        node worker.js
+      "
+    environment:
+      - PORT=3001
+      - WORKER_ID=worker-2
+    networks:
+      - claudecluster-network
+
+networks:
+  claudecluster-network:
+    driver: bridge
+    name: claudecluster-network
