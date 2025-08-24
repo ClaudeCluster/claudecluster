@@ -1,0 +1,325 @@
+{
+  "version": "6.0",
+  "nxVersion": "17.3.2",
+  "deps": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "lerna": "^8.0.0",
+    "nx": "^17.0.0",
+    "turbo": "^1.10.0"
+  },
+  "pathMappings": {},
+  "nxJsonPlugins": [],
+  "pluginsConfig": {
+    "@nx/js": {
+      "analyzeSourceFiles": false
+    }
+  },
+  "fileMap": {
+    "projectFileMap": {
+      "@claudecluster/driver": [
+        {
+          "file": "packages/driver/jest.config.js",
+          "hash": "13501632370439346754"
+        },
+        {
+          "file": "packages/driver/package.json",
+          "hash": "1894481732645228061",
+          "deps": [
+            "@claudecluster/core",
+            "npm:express",
+            "npm:cors",
+            "npm:helmet",
+            "npm:dotenv",
+            "npm:winston",
+            "npm:axios",
+            "npm:node-cron",
+            "npm:@types/node",
+            "npm:jest",
+            "npm:nodemon"
+          ]
+        },
+        {
+          "file": "packages/driver/src/index.ts",
+          "hash": "1427742075612277870"
+        },
+        {
+          "file": "packages/driver/tsconfig.json",
+          "hash": "4302795907529075396"
+        }
+      ],
+      "@claudecluster/core": [
+        {
+          "file": "packages/core/jest.config.js",
+          "hash": "13501632370439346754"
+        },
+        {
+          "file": "packages/core/package.json",
+          "hash": "12073687112212359166",
+          "deps": [
+            "npm:uuid",
+            "npm:lodash",
+            "npm:moment",
+            "npm:joi",
+            "npm:jest"
+          ]
+        },
+        {
+          "file": "packages/core/src/index.ts",
+          "hash": "2587883459480997515"
+        },
+        {
+          "file": "packages/core/src/types.ts",
+          "hash": "15972668643413245008"
+        },
+        {
+          "file": "packages/core/tsconfig.json",
+          "hash": "8200940453220686140"
+        }
+      ],
+      "@claudecluster/cli": [
+        {
+          "file": "tools/cli/package.json",
+          "hash": "6723314351649005177",
+          "deps": [
+            "@claudecluster/core",
+            "@claudecluster/shared",
+            "npm:axios",
+            "npm:jest",
+            "npm:eslint"
+          ]
+        },
+        {
+          "file": "tools/cli/src/cli.js",
+          "hash": "15692159746665518703"
+        }
+      ],
+      "@claudecluster/taskmaster": [
+        {
+          "file": "tools/taskmaster/package.json",
+          "hash": "3763708600578472707",
+          "deps": [
+            "@claudecluster/core",
+            "@claudecluster/shared",
+            "npm:express",
+            "npm:cors",
+            "npm:helmet",
+            "npm:morgan",
+            "npm:compression",
+            "npm:express-rate-limit",
+            "npm:nodemon",
+            "npm:jest",
+            "npm:eslint"
+          ]
+        },
+        {
+          "file": "tools/taskmaster/public/index.html",
+          "hash": "18118923548715580876"
+        },
+        {
+          "file": "tools/taskmaster/src/taskmaster.js",
+          "hash": "9468477375881628361"
+        },
+        {
+          "file": "tools/taskmaster/taskmaster.config.js",
+          "hash": "10875388809350079607"
+        }
+      ],
+      "@claudecluster/shared": [
+        {
+          "file": "packages/shared/jest.config.js",
+          "hash": "13501632370439346754"
+        },
+        {
+          "file": "packages/shared/package.json",
+          "hash": "13014241030521429905",
+          "deps": [
+            "npm:dotenv",
+            "npm:winston",
+            "npm:joi",
+            "npm:@types/node",
+            "npm:jest"
+          ]
+        },
+        {
+          "file": "packages/shared/src/config.ts",
+          "hash": "15501658688740470098"
+        },
+        {
+          "file": "packages/shared/tsconfig.json",
+          "hash": "8271956372967336173"
+        }
+      ],
+      "@claudecluster/worker": [
+        {
+          "file": "packages/worker/jest.config.js",
+          "hash": "13501632370439346754"
+        },
+        {
+          "file": "packages/worker/package.json",
+          "hash": "1103918083701687907",
+          "deps": [
+            "@claudecluster/core",
+            "npm:express",
+            "npm:cors",
+            "npm:helmet",
+            "npm:dotenv",
+            "npm:winston",
+            "npm:axios",
+            "npm:@types/node",
+            "npm:jest",
+            "npm:nodemon"
+          ]
+        },
+        {
+          "file": "packages/worker/src/index.ts",
+          "hash": "5686574464238473065"
+        },
+        {
+          "file": "packages/worker/tsconfig.json",
+          "hash": "4302795907529075396"
+        }
+      ]
+    },
+    "nonProjectFiles": [
+      {
+        "file": ".envrc",
+        "hash": "1110268053093997963"
+      },
+      {
+        "file": ".eslintrc.js",
+        "hash": "3496727812878019268"
+      },
+      {
+        "file": ".github/CODEOWNERS",
+        "hash": "710480538367724642"
+      },
+      {
+        "file": ".github/ISSUE_TEMPLATE/bug_report.yml",
+        "hash": "13095547388752909507"
+      },
+      {
+        "file": ".github/ISSUE_TEMPLATE/config.yml",
+        "hash": "4393361524029465781"
+      },
+      {
+        "file": ".github/ISSUE_TEMPLATE/feature_request.yml",
+        "hash": "451053782265443623"
+      },
+      {
+        "file": ".github/pull_request_template.md",
+        "hash": "8955283122029433697"
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "hash": "7191047162189493180"
+      },
+      {
+        "file": ".github/workflows/markdown-link-config.json",
+        "hash": "5246496468763403285"
+      },
+      {
+        "file": ".github/workflows/stale.yml",
+        "hash": "6744396118431894037"
+      },
+      {
+        "file": ".github/yamllint-config.yml",
+        "hash": "6413813785106502302"
+      },
+      {
+        "file": ".gitignore",
+        "hash": "3446793970376313916"
+      },
+      {
+        "file": ".mcp.json.example",
+        "hash": "16336377613427336339"
+      },
+      {
+        "file": ".prettierrc",
+        "hash": "1738274915197343624"
+      },
+      {
+        "file": "CLAUDE.md",
+        "hash": "15435363539047864116"
+      },
+      {
+        "file": "LICENSE",
+        "hash": "12649885980860800067"
+      },
+      {
+        "file": "MONOREPO_README.md",
+        "hash": "13317458826848067377"
+      },
+      {
+        "file": "NOTICE",
+        "hash": "14038460882044703101"
+      },
+      {
+        "file": "README.md",
+        "hash": "671173061350697109"
+      },
+      {
+        "file": "SECURITY.md",
+        "hash": "241260965747660052"
+      },
+      {
+        "file": "data/sample-tasks.json",
+        "hash": "6237940097692358250"
+      },
+      {
+        "file": "docs/CONTRIBUTING.md",
+        "hash": "17136752272053492892"
+      },
+      {
+        "file": "lerna.json",
+        "hash": "16810783207474434835"
+      },
+      {
+        "file": "nx.json",
+        "hash": "6941590698657782927"
+      },
+      {
+        "file": "package-lock.json",
+        "hash": "15118483385269992819"
+      },
+      {
+        "file": "package.json",
+        "hash": "17754676766704442981"
+      },
+      {
+        "file": "tests/taskmaster.test.js",
+        "hash": "14564714638722894837"
+      },
+      {
+        "file": "tools/setup/TASKMASTER_README.md",
+        "hash": "10724792572441597687"
+      },
+      {
+        "file": "tools/setup/TASKMASTER_SETUP.md",
+        "hash": "15909520860304823203"
+      },
+      {
+        "file": "tools/setup/TASKMASTER_SUMMARY.md",
+        "hash": "12106422155306423635"
+      },
+      {
+        "file": "tools/setup/monorepo-setup.js",
+        "hash": "10305919008737623270"
+      },
+      {
+        "file": "tools/setup/setup.js",
+        "hash": "5293067130671202191"
+      },
+      {
+        "file": "tsconfig.json",
+        "hash": "1676279466426285664"
+      },
+      {
+        "file": "turbo.json",
+        "hash": "8382014421010548640"
+      }
+    ]
+  }
+}

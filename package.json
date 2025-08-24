@@ -1,0 +1,83 @@
+{
+  "name": "claudecluster-monorepo",
+  "version": "0.1.0",
+  "description": "ClaudeCluster monorepo - Open-source orchestration framework for Claude Code",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "format": "npm run format --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules",
+    "setup": "node tools/setup/setup.js",
+    "taskmaster": "npm run start --workspace=@claudecluster/taskmaster",
+    "taskmaster:dev": "npm run dev --workspace=@claudecluster/taskmaster",
+    "cli": "npm run start --workspace=@claudecluster/cli",
+    "core:dev": "npm run dev --workspace=@claudecluster/core",
+    "worker:dev": "npm run dev --workspace=@claudecluster/worker",
+    "driver:dev": "npm run dev --workspace=@claudecluster/driver",
+    "prepare": "husky",
+    "security:audit": "npm audit --audit-level moderate",
+    "security:fix": "npm audit fix",
+    "types:check": "tsc --noEmit",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "deps:check": "npm outdated",
+    "deps:update": "npm update"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "orchestration",
+    "parallel",
+    "coding",
+    "cluster",
+    "framework",
+    "monorepo"
+  ],
+  "author": "Moshin Hashmi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moshinhashmi/claudecluster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/moshinhashmi/claudecluster/issues"
+  },
+  "homepage": "https://github.com/moshinhashmi/claudecluster#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "conventional-changelog-cli": "^5.0.0",
+    "eslint": "^8.55.0",
+    "husky": "^9.1.7",
+    "lerna": "^8.0.0",
+    "lint-staged": "^16.1.5",
+    "nx": "^17.0.0",
+    "prettier": "^3.1.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "packageManager": "npm@10.0.0",
+  "lint-staged": {
+    "*.{ts,js,json,md}": [
+      "prettier --write"
+    ],
+    "*.{ts,js}": [
+      "eslint --fix"
+    ]
+  }
+}

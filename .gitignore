@@ -103,3 +103,10 @@ artifacts/
 reports/
 outputs/
 
+
+
+# Husky Git hooks
+.husky/_
+
+# Additional build outputs
+*.tsbuildinfo

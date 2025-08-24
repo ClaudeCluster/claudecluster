@@ -13,15 +13,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.changes.outputs.packages }}
+      docs: ${{ steps.changes.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            packages:
+              - 'packages/**'
+              - 'apps/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'turbo.json'
+              - 'tsconfig.json'
+            docs:
+              - 'docs/**'
+              - '*.md'
+              - '.github/**'
+
   lint-and-validate:
     runs-on: ubuntu-latest
     name: Lint and Validate
+    needs: changes
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Validate Markdown Links
+        if: needs.changes.outputs.docs == 'true'
         uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
           use-quiet-mode: 'yes'
@@ -33,6 +67,18 @@ jobs:
         with:
           file_or_dir: '.github/'
           config_file: '.github/yamllint-config.yml'
+
+      - name: Lint TypeScript/JavaScript
+        if: needs.changes.outputs.packages == 'true'
+        run: npm run lint
+
+      - name: Check TypeScript types
+        if: needs.changes.outputs.packages == 'true'
+        run: npm run types:check
+
+      - name: Check code formatting
+        if: needs.changes.outputs.packages == 'true'
+        run: npx prettier --check "**/*.{ts,js,json,md}"
 
       - name: Check DCO sign-off
         run: |
@@ -82,6 +128,41 @@ jobs:
           fi
 
           echo "✅ All commits have DCO sign-off"
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    name: Build and Test
+    needs: [changes, lint-and-validate]
+    if: needs.changes.outputs.packages == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            packages/*/coverage/
+            apps/*/coverage/
+          retention-days: 5
 
   security-scan:
     runs-on: ubuntu-latest

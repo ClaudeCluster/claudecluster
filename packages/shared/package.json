@@ -1,0 +1,28 @@
+{
+  "name": "@claudecluster/shared",
+  "version": "0.1.0",
+  "description": "Shared utilities and configurations for ClaudeCluster",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/jest": "^29.5.8",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.0"
+  }
+}

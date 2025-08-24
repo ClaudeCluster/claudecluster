@@ -1,0 +1,88 @@
+[
+  {
+    "id": 1,
+    "title": "Design Core Architecture",
+    "description": "Design the fundamental architecture for ClaudeCluster including Driver-Worker communication patterns, task distribution mechanisms, and result aggregation strategies.",
+    "category": "Architecture",
+    "priority": "High",
+    "status": "To Do",
+    "assignee": null,
+    "estimatedTime": "4-6 hours",
+    "dependencies": [],
+    "createdAt": "2025-08-24T03:46:21.341Z",
+    "updatedAt": "2025-08-24T03:46:21.342Z",
+    "progress": 0,
+    "comments": [],
+    "attachments": []
+  },
+  {
+    "id": 2,
+    "title": "Implement Driver Core",
+    "description": "Build the main Driver component that orchestrates tasks, manages worker instances, and coordinates parallel execution.",
+    "category": "Core Development",
+    "priority": "High",
+    "status": "To Do",
+    "assignee": null,
+    "estimatedTime": "6-8 hours",
+    "dependencies": [
+      "Design Core Architecture"
+    ],
+    "createdAt": "2025-08-24T03:46:21.342Z",
+    "updatedAt": "2025-08-24T03:46:21.342Z",
+    "progress": 0,
+    "comments": [],
+    "attachments": []
+  },
+  {
+    "id": 3,
+    "title": "Create Worker Adapter",
+    "description": "Develop the Worker adapter interface that allows Claude Code sessions to be managed and controlled programmatically.",
+    "category": "Core Development",
+    "priority": "High",
+    "status": "To Do",
+    "assignee": null,
+    "estimatedTime": "4-6 hours",
+    "dependencies": [
+      "Design Core Architecture"
+    ],
+    "createdAt": "2025-08-24T03:46:21.342Z",
+    "updatedAt": "2025-08-24T03:46:21.342Z",
+    "progress": 0,
+    "comments": [],
+    "attachments": []
+  },
+  {
+    "id": 4,
+    "title": "Setup Testing Framework",
+    "description": "Configure Jest testing framework, create test utilities, and establish testing patterns for the project.",
+    "category": "Testing",
+    "priority": "Medium",
+    "status": "To Do",
+    "assignee": null,
+    "estimatedTime": "2-3 hours",
+    "dependencies": [],
+    "createdAt": "2025-08-24T03:46:21.342Z",
+    "updatedAt": "2025-08-24T03:46:21.342Z",
+    "progress": 0,
+    "comments": [],
+    "attachments": []
+  },
+  {
+    "id": 5,
+    "title": "Document API Design",
+    "description": "Create comprehensive API documentation including endpoints, request/response schemas, and usage examples.",
+    "category": "Documentation",
+    "priority": "Medium",
+    "status": "To Do",
+    "assignee": null,
+    "estimatedTime": "3-4 hours",
+    "dependencies": [
+      "Design Core Architecture"
+    ],
+    "createdAt": "2025-08-24T03:46:21.342Z",
+    "updatedAt": "2025-08-24T03:46:21.342Z",
+    "progress": 0,
+    "comments": [],
+    "attachments": []
+  }
+]
