@@ -1,3 +1,4 @@
+---
 name: Bug Report
 description: File a bug report to help us improve ClaudeCluster
 title: "[Bug]: "
@@ -15,8 +16,8 @@ body:
       label: Is there an existing issue for this?
       description: Please search to see if an issue already exists for the bug you encountered.
       options:
-      - label: I have searched the existing issues
-        required: true
+        - label: I have searched the existing issues
+          required: true
 
   - type: textarea
     id: current-behavior
@@ -59,10 +60,10 @@ body:
           - **Claude Code Version**: 1.2.3
           - **Docker Version**: 20.10.21
       value: |
-        - OS: 
-        - Node Version: 
-        - Claude Code Version: 
-        - Docker Version: 
+        - OS:
+        - Node Version:
+        - Claude Code Version:
+        - Docker Version:
       render: markdown
     validations:
       required: true
@@ -71,7 +72,7 @@ body:
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: Copy and paste any relevant log output. This will be automatically formatted.
       render: shell
 
   - type: checkboxes
