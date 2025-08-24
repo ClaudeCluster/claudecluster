@@ -17,11 +17,13 @@ claudecluster/
 │   ├── worker/        # Worker implementation
 │   ├── driver/        # Driver orchestration
 │   └── shared/        # Shared utilities and config
+├── apps/              # Applications
+│   └── taskmaster/    # Task Master AI dashboard (web app)
 ├── tools/             # Development tools
-│   ├── taskmaster/    # Task Master AI dashboard
 │   ├── cli/           # Command line interface
 │   └── setup/         # Setup and configuration scripts
 └── docs/              # Documentation
+    └── ARCHITECTURE.md # Detailed architecture documentation
 ```
 
 ---
@@ -62,8 +64,29 @@ npm run dev
 # Run tests
 npm run test
 
+# Run tests with coverage
+npm run test:coverage
+
 # Lint code
 npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Format code
+npm run format
+
+# Check TypeScript types
+npm run types:check
+
+# Security audit
+npm run security:audit
+
+# Generate changelog
+npm run changelog
+
+# Test release (dry run)
+npm run release:dry-run
 
 # Clean build artifacts
 npm run clean
@@ -200,9 +223,16 @@ The Task Master AI provides a web-based dashboard for managing ClaudeCluster tas
 ### Development Tools
 
 - **Lerna**: Monorepo management and versioning
-- **Turbo**: Build system and caching
+- **Turbo**: Build system and caching with intelligent incremental builds
 - **Nx**: Task execution and dependency management
 - **TypeScript**: Type safety across all packages
+- **ESLint**: Code linting with TypeScript support
+- **Prettier**: Code formatting and style consistency
+- **Husky**: Git hooks for quality enforcement
+- **lint-staged**: Pre-commit linting for staged files
+- **Commitlint**: Conventional commit message validation
+- **Semantic-release**: Automated versioning and package publishing
+- **Codecov**: Code coverage reporting and tracking
 
 ---
 
