@@ -111,7 +111,7 @@ Contributions are welcome! This project is early—design docs, prototypes, and 
 2. For larger changes, start with an RFC Issue to converge on design
 3. Submit a PR with focused edits and clear rationale
 
-Please follow conventional commit messages and include concise context in PR descriptions.
+Please read `CONTRIBUTING.md` for our contribution process, DCO sign-off, and conventional commits. All contributions are licensed under Apache-2.0; see `LICENSE` and `NOTICE`.
 
 ---
 
