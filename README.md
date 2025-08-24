@@ -19,20 +19,29 @@ ClaudeCluster is an open-source orchestration framework that transforms Claude C
 
 ```mermaid
 flowchart TD
-  A[Driver (Claude Code)] -->|Splits tasks| B1[Worker 1 (Claude Code)]
-  A -->|Splits tasks| B2[Worker 2 (Claude Code)]
-  A -->|Splits tasks| B3[Worker 3 (Claude Code)]
-  B1 -->|Progress + artifacts| A
-  B2 -->|Progress + artifacts| A
-  B3 -->|Progress + artifacts| A
-  A -->|Aggregated results| C[Application repo / PRs]
+  A[Driver<br/>Claude Code] --> B1[Worker 1<br/>Claude Code]
+  A --> B2[Worker 2<br/>Claude Code]
+  A --> B3[Worker 3<br/>Claude Code]
+  B1 --> A
+  B2 --> A
+  B3 --> A
+  A --> C[Application repo<br/>PRs]
+  
+  A -.->|Splits tasks| B1
+  A -.->|Splits tasks| B2
+  A -.->|Splits tasks| B3
+  B1 -.->|Progress + artifacts| A
+  B2 -.->|Progress + artifacts| A
+  B3 -.->|Progress + artifacts| A
+  A -.->|Aggregated results| C
 ```
 
 ### Single Claude Code Instance (baseline)
 
 ```mermaid
 flowchart TD
-  S[Claude Code (single instance)] -->|Executes tasks sequentially| R[Application repo / PRs]
+  S[Claude Code<br/>single instance] --> R[Application repo<br/>PRs]
+  S -.->|Executes tasks sequentially| R
 ```
 
 ### Core concepts
