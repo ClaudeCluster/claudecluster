@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/core" },
+    { "path": "./packages/driver" },
+    { "path": "./packages/worker" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mcp" }
+  ]
+}

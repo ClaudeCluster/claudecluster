@@ -1,13 +1,24 @@
 # OS / Editor
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 .AppleDouble
 .LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 .idea/
 .vscode/
 *.swp
 *.swo
+*.tmp
 *.iml
 .history/
+.ionide/
+*~
 
 # Logs & temp
 *.log
@@ -19,6 +30,14 @@ lerna-debug.log*
 tmp/
 temp/
 .cache/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+*.pid
+*.seed
+*.pid.lock
 
 # Env files
 .env
@@ -29,9 +48,10 @@ temp/
 # MCP configuration with sensitive paths/keys
 .mcp.json
 
-# Node.js / JS
+# Node.js / JS / TS
 node_modules/
 .npm/
+.eslintcache
 .pnp/
 .pnp.cjs
 .pnpm-store/
@@ -43,8 +63,16 @@ node_modules/
 !.yarn/versions
 dist/
 build/
+lib/
+out/
 coverage/
 .nyc_output/
+.turbo/
+.next/
+.nuxt/
+.vuepress/dist
+*.tsbuildinfo
+.tsbuildinfo
 
 # Python
 __pycache__/
@@ -103,3 +131,35 @@ artifacts/
 reports/
 outputs/
 
+
+
+# Husky Git hooks
+.husky/_
+
+# Build outputs & artifacts
+artifacts/
+reports/
+outputs/
+*.tgz
+*.tar.gz
+logs/
+*.lcov
+
+# Logs
+logs
+dev-debug.log
+# Dependency directories
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

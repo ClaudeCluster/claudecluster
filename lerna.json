@@ -1,0 +1,24 @@
+{
+  "version": "0.1.0",
+  "npmClient": "npm",
+  "useWorkspaces": true,
+  "packages": [
+    "packages/*",
+    "tools/*"
+  ],
+  "command": {
+    "publish": {
+      "conventionalCommits": true,
+      "message": "chore(release): publish %s"
+    },
+    "bootstrap": {
+      "npmClientArgs": ["--no-package-lock"]
+    }
+  },
+  "ignoreChanges": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/*.log",
+    "**/coverage/**"
+  ]
+}
