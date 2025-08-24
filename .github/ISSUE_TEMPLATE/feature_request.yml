@@ -17,7 +17,7 @@ body:
       description: Please search to see if a feature request already exists for your idea.
       options:
         - label: I have searched the existing issues
-        required: true
+          required: true
 
   - type: textarea
     id: problem-description
