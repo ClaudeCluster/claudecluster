@@ -35,7 +35,7 @@ jobs:
           config_file: '.github/yamllint-config.yml'
 
       - name: Check DCO sign-off
-        uses: tim-actions/dco@master
+        uses: tim-actions/dco@v1.1
 
   security-scan:
     runs-on: ubuntu-latest
