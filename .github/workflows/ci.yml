@@ -31,7 +31,7 @@ jobs:
         uses: ibiqlik/action-yamllint@v3
         with:
           file_or_dir: '.github/'
-          config_file: '.github/workflows/yamllint-config.yml'
+          config_file: '.github/yamllint-config.yml'
 
       - name: Check DCO sign-off
         uses: tim-actions/dco@master
