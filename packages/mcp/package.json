@@ -1,0 +1,83 @@
+{
+  "name": "@claudecluster/mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for ClaudeCluster integration with Claude Code",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "claudecluster-mcp": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts"
+    },
+    "./protocol": {
+      "import": "./dist/protocol/index.js",
+      "types": "./dist/protocol/index.d.ts"
+    },
+    "./claude": {
+      "import": "./dist/claude/index.js",
+      "types": "./dist/claude/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsc --build --watch",
+    "start": "node dist/cli.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "types:check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@claudecluster/core": "workspace:*",
+    "@claudecluster/shared": "workspace:*",
+    "@claudecluster/driver": "workspace:*",
+    "fastify": "^4.24.0",
+    "@fastify/cors": "^8.4.0",
+    "@fastify/websocket": "^8.3.0",
+    "@fastify/jwt": "^7.2.0",
+    "axios": "^1.6.0",
+    "pino": "^8.16.0",
+    "pino-pretty": "^10.2.0",
+    "zod": "^3.22.0",
+    "ws": "^8.14.0",
+    "uuid": "^9.0.0",
+    "jsonrpc-lite": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.0",
+    "@types/ws": "^8.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "claudecluster",
+    "mcp",
+    "model-context-protocol",
+    "claude-code"
+  ],
+  "author": "ClaudeCluster Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/claudecluster/claudecluster.git",
+    "directory": "packages/mcp"
+  }
+}

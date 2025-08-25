@@ -1,0 +1,357 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Monorepo and Core Tooling",
+        "description": "Initialize a monorepo with Yarn workspaces or pnpm, configure TypeScript strict mode, ESLint, Prettier, and base project structure for all packages.",
+        "details": "Use pnpm or Yarn workspaces for monorepo management. Configure TypeScript (>=5.4) with strict mode and path aliases. Set up ESLint (typescript-eslint@latest), Prettier, and Husky for pre-commit hooks. Add base package.json for each package. Integrate Typedoc for documentation generation. Add .editorconfig and .nvmrc for consistency.",
+        "testStrategy": "Verify all packages build with tsc --noEmit. Run ESLint and Prettier checks. Ensure Typedoc generates docs. Confirm workspace scripts run in all packages.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Core TypeScript Types and Interfaces (@claudecluster/core)",
+        "description": "Define all fundamental types and interfaces for tasks, workers, drivers, and communication protocols.",
+        "details": "Create Task, TaskStatus, TaskResult, TaskPriority, Worker, WorkerStatus, WorkerCapabilities, Driver, DriverStatus, TaskGraph, Message, Event, Command interfaces. Use TypeScript 5.x features (e.g., satisfies, template literal types). No external dependencies. Add JSDoc for all types.",
+        "testStrategy": "Write type-level tests using tsd or expect-type. Validate type coverage with tsc --noEmit --strict. Review JSDoc output.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Add Zod Schemas for Runtime Validation (@claudecluster/core)",
+        "description": "Implement Zod schemas for all core types to enable runtime validation and type inference.",
+        "details": "Install zod@3.x. For each core type/interface, create a corresponding Zod schema. Export schemas and inferred types. Ensure schemas are used for runtime validation in downstream packages.",
+        "testStrategy": "Write Jest tests to validate Zod schemas against valid/invalid data. Achieve >90% coverage for validation logic.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Configuration Management (@claudecluster/shared)",
+        "description": "Create configuration loader supporting environment variables, JSON, and YAML files with validation.",
+        "details": "Use dotenv for .env loading, yaml@2.x for YAML parsing, and Zod for schema validation. Support config precedence: env > JSON > YAML > defaults. Export a singleton config object. Document config options with JSDoc.",
+        "testStrategy": "Test config loading with various file types and env overrides. Validate error handling for invalid configs.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Integrate Structured Logging with Pino (@claudecluster/shared)",
+        "description": "Set up Pino logger with structured output, log levels, and context support.",
+        "details": "Install pino@8.x. Create a logger factory supporting log levels (info, warn, error, debug). Add child logger support for context. Integrate with config for log level. Export logger instance for use in all packages.",
+        "testStrategy": "Write Jest tests to verify log output, levels, and context. Check logs in JSON format.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Event Emitter and Message Utilities (@claudecluster/shared)",
+        "description": "Create advanced event emitter and message passing utilities using EventEmitter2.",
+        "details": "Install eventemitter2@6.x. Wrap EventEmitter2 to provide typed events, wildcard support, and async listeners. Add message passing helpers for inter-process communication. Document all utilities.",
+        "testStrategy": "Test event emission, wildcard listeners, and async event handling. Achieve >90% coverage.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop Health Check and Monitoring Utilities (@claudecluster/shared)",
+        "description": "Implement utilities for health checks, uptime, and resource monitoring.",
+        "details": "Use os-utils or native Node.js os module for CPU/memory stats. Create health check endpoints and monitoring hooks. Integrate with logger for alerts. Export health check middleware for HTTP servers.",
+        "testStrategy": "Test health check responses under normal and failure conditions. Simulate resource exhaustion and verify alerts.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Common Validation and Error Handling (@claudecluster/shared)",
+        "description": "Create reusable error classes, error codes, and validation helpers.",
+        "details": "Define custom Error subclasses (e.g., ValidationError, TaskError). Use Zod for validation helpers. Export error handling middleware for HTTP APIs. Document error codes and structure.",
+        "testStrategy": "Test error creation, propagation, and HTTP error responses. Validate error serialization.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Develop Utility Functions for Common Operations (@claudecluster/shared)",
+        "description": "Implement utility functions for file, path, and data operations.",
+        "details": "Provide helpers for file I/O (fs/promises), path normalization, deep cloning, and safe JSON parsing. Use modern Node.js APIs (>=18.x). Add unit tests for all utilities.",
+        "testStrategy": "Test all utility functions with edge cases and invalid input. Achieve >90% coverage.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Claude Code Process Management (@claudecluster/worker)",
+        "description": "Spawn and manage Claude Code processes using node-pty for task isolation.",
+        "details": "Install node-pty@1.x. Create a process manager that spawns Claude Code subprocesses per task. Ensure proper isolation, stdout/stderr capture, and cleanup. Handle process timeouts and errors robustly.",
+        "testStrategy": "Test process spawning, output capture, and cleanup. Simulate process crashes and verify recovery.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Build Task Execution Engine with Isolation (@claudecluster/worker)",
+        "description": "Develop engine to execute tasks in isolated processes with resource limits.",
+        "details": "Leverage node-pty for process isolation. Integrate with config for CPU/memory limits. Use child_process for fallback if needed. Track task lifecycle and status. Ensure no cross-task leakage.",
+        "testStrategy": "Test concurrent task execution, resource limits, and isolation. Use stress tests to validate robustness.",
+        "priority": "high",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Stream-Based Progress Reporting (@claudecluster/worker)",
+        "description": "Create system for streaming task progress and logs to clients.",
+        "details": "Use Node.js streams and Fastify reply.raw for HTTP streaming. Integrate with event emitter for progress events. Support real-time updates via WebSockets (ws@8.x).",
+        "testStrategy": "Test streaming under high load, network interruptions, and client disconnects. Validate progress accuracy.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Add Resource Monitoring and Limits (@claudecluster/worker)",
+        "description": "Monitor and enforce CPU/memory usage per task and worker.",
+        "details": "Use process resourceUsage, os module, and cgroup stats (if available). Enforce configurable limits. Emit alerts and terminate tasks exceeding limits. Integrate with health monitoring.",
+        "testStrategy": "Simulate resource exhaustion. Test enforcement and alerting. Validate metrics reporting.",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Artifact Collection and Storage (@claudecluster/worker)",
+        "description": "Collect and store task artifacts securely with cloud storage integration.",
+        "details": "Use @google-cloud/storage for GCS integration. Store artifacts in per-task directories. Sanitize file paths. Support local and cloud storage via config. Document artifact structure.",
+        "testStrategy": "Test artifact upload/download, path sanitization, and cloud/local switching. Validate security controls.",
+        "priority": "medium",
+        "dependencies": [
+          9,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Develop Fastify HTTP API Server (@claudecluster/worker)",
+        "description": "Create Fastify server with endpoints for health, tasks, metrics, and cancellation.",
+        "details": "Install fastify@4.x. Define routes: GET /health, POST /tasks (streaming), GET /tasks/:id, DELETE /tasks/:id, GET /metrics. Use Zod for request/response validation. Integrate with logger and health checks.",
+        "testStrategy": "Write integration tests for all endpoints using supertest. Validate streaming, error handling, and schema compliance.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          7,
+          8,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement File System Sandboxing and Security (@claudecluster/worker)",
+        "description": "Restrict file system access for task processes to prevent escapes.",
+        "details": "Use chroot or Node.js fs/promises with path whitelisting. Drop process privileges where possible. Validate all file paths. Document security model. Integrate with artifact storage.",
+        "testStrategy": "Attempt directory traversal and privilege escalation in tests. Validate sandbox enforcement.",
+        "priority": "high",
+        "dependencies": [
+          14,
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Task Cancellation and Cleanup (@claudecluster/worker)",
+        "description": "Enable safe cancellation and cleanup of running tasks and resources.",
+        "details": "Track process PIDs and resource handles. On DELETE /tasks/:id, terminate process, cleanup temp files, and update status. Handle race conditions and orphaned processes.",
+        "testStrategy": "Test cancellation under load, during I/O, and with orphaned processes. Validate resource cleanup.",
+        "priority": "medium",
+        "dependencies": [
+          11,
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Develop Intelligent Task Planning and Decomposition (@claudecluster/driver)",
+        "description": "Implement algorithms for task splitting, dependency resolution, and topological sorting.",
+        "details": "Use graphlib or custom implementation for task graphs. Analyze task complexity and split accordingly. Implement topological sort for dependency resolution. Document decomposition strategies.",
+        "testStrategy": "Test with complex task graphs, circular dependencies, and edge cases. Validate correct execution order.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Build Worker Pool Management and Load Balancing (@claudecluster/driver)",
+        "description": "Manage worker pool, assign tasks, and balance load dynamically.",
+        "details": "Maintain pool of worker connections. Use round-robin or weighted algorithms for assignment. Monitor worker health and scale pool size. Integrate with config for scaling policies.",
+        "testStrategy": "Simulate worker failures, scaling events, and load spikes. Validate task distribution and failover.",
+        "priority": "high",
+        "dependencies": [
+          7,
+          18
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Implement Progress Aggregation and Reporting (@claudecluster/driver)",
+        "description": "Aggregate progress from multiple workers and provide unified reporting.",
+        "details": "Collect progress events from workers via WebSockets or HTTP streaming. Merge and normalize progress data. Expose aggregated status via API and WebSocket.",
+        "testStrategy": "Test aggregation with many concurrent workers. Validate real-time updates and accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          12,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Develop MCP Server with Model Context Protocol Compliance (@claudecluster/mcp)",
+        "description": "Implement production MCP server with Claude Code integration, authentication, and routing.",
+        "details": "Use Fastify for HTTP/WebSocket server. Integrate Claude Code API with abstract interface. Implement JWT authentication (jsonwebtoken@9.x). Use Redis (ioredis@5.x) for session storage. Add OpenAPI spec generation (fastify-swagger@8.x).",
+        "testStrategy": "Test protocol compliance, authentication, and session persistence. Validate OpenAPI docs and endpoint security.",
+        "priority": "high",
+        "dependencies": [
+          15,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Integrate Real-Time Communication and Redis Session Storage (@claudecluster/mcp)",
+        "description": "Add WebSocket support and Redis-backed session/state management.",
+        "details": "Use ws@8.x for WebSockets. Store session data in Redis. Ensure session affinity for requests. Handle reconnects and state recovery. Integrate with OpenTelemetry for observability.",
+        "testStrategy": "Test real-time updates, session persistence, and failover. Simulate Redis outages and recovery.",
+        "priority": "medium",
+        "dependencies": [
+          21
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Implement CLI Interface with Commander.js (@claudecluster/cli)",
+        "description": "Develop CLI with commands for project init, task submission, worker management, and reporting.",
+        "details": "Use commander@11.x for CLI structure. Add commands: init, run, workers, status, logs, export. Integrate Inquirer.js for prompts and cli-progress for progress bars. Support config file management and export formats (JSON, Markdown, HTML).",
+        "testStrategy": "Test all CLI commands with various options. Validate interactive prompts, progress bars, and export outputs.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          15,
+          21
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Set Up CI/CD Pipeline with GitHub Actions and Docker Compose",
+        "description": "Configure CI/CD for build, test, lint, and deploy with parallel jobs and multi-service Docker Compose.",
+        "details": "Write GitHub Actions workflows for lint, test, build, and deploy. Use Docker Compose for local multi-service testing. Integrate Snyk for security scanning. Push images to registry for Cloud Run deployment.",
+        "testStrategy": "Test CI/CD runs on PRs and merges. Validate Docker Compose brings up all services. Check Snyk scan results.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          23
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Integrate Observability, Benchmarking, and Documentation",
+        "description": "Add OpenTelemetry, Prometheus metrics, performance benchmarking, and comprehensive documentation.",
+        "details": "Install @opentelemetry/api and SDKs. Instrument all services for tracing and metrics. Export Prometheus metrics. Add performance benchmarks (e.g., autocannon). Generate Typedoc and user guides. Document security and architecture.",
+        "testStrategy": "Verify traces and metrics in Prometheus/Grafana. Run benchmarks and compare to targets. Review documentation completeness.",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          15,
+          21,
+          24
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-24T20:18:26.391Z",
+      "updated": "2025-08-24T20:18:26.391Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
