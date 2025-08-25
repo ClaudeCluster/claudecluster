@@ -5,8 +5,9 @@
 import Fastify from 'fastify';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Task, TaskResult, WorkerStatus, WorkerCapabilities, TaskCategory } from '@claudecluster/core';
-import { TaskExecutionEngine } from '../engine/index.js';
-import { ClaudeProcessPool } from '../process/index.js';
+import { UnifiedTaskExecutionEngine } from '../engine/unified-engine.js';
+import { ExecutionMode } from '../execution/provider.js';
+import type { SessionOptions } from '../engine/unified-engine.js';
 import type { TaskExecutionOptions } from '../engine/index.js';
 import type { ClaudeProcessConfig } from '../process/index.js';
 import { EventEmitter } from 'events';
@@ -23,6 +24,18 @@ export interface WorkerServerConfig {
   readonly enableMetrics: boolean;
   readonly corsOrigin?: string | string[];
   readonly requestTimeout: number;
+  readonly executionMode: ExecutionMode;
+  readonly containerConfig?: {
+    image: string;
+    registry?: string;
+    networkName: string;
+    resourceLimits: {
+      memory: number;
+      cpu: number;
+    };
+  };
+  readonly sessionTimeout: number;
+  readonly enableAgenticMode: boolean;
 }
 
 /**
@@ -41,13 +54,41 @@ export const DEFAULT_WORKER_CONFIG: WorkerServerConfig = {
   maxConcurrentTasks: 5,
   enableHealthCheck: true,
   enableMetrics: true,
-  requestTimeout: 600000 // 10 minutes
+  requestTimeout: 600000, // 10 minutes
+  executionMode: ExecutionMode.PROCESS_POOL, // Default to backward compatibility
+  containerConfig: {
+    image: 'ghcr.io/anthropics/claude-code:latest',
+    networkName: 'claudecluster-network',
+    resourceLimits: {
+      memory: 2 * 1024 * 1024 * 1024, // 2GB
+      cpu: 1024 // CPU shares
+    }
+  },
+  sessionTimeout: 3600000, // 1 hour
+  enableAgenticMode: false
 };
 
 /**
  * Task submission request schema
  */
 interface TaskSubmissionRequest {
+  task: Task;
+  options?: Partial<TaskExecutionOptions>;
+  executionMode?: ExecutionMode;
+  sessionId?: string; // For agentic mode
+}
+
+/**
+ * Session creation request schema
+ */
+interface SessionCreationRequest {
+  options: SessionOptions;
+}
+
+/**
+ * Session execution request schema
+ */
+interface SessionExecutionRequest {
   task: Task;
   options?: Partial<TaskExecutionOptions>;
 }
@@ -117,9 +158,9 @@ interface MetricsResponse {
  */
 export class WorkerServer extends EventEmitter {
   private fastify: FastifyInstance;
-  private taskEngine: TaskExecutionEngine;
-  private processPool: ClaudeProcessPool;
+  private taskEngine: UnifiedTaskExecutionEngine;
   private activeTasks = new Map<string, Promise<TaskResult>>();
+  private activeSessions = new Map<string, string>(); // sessionId -> containerId
   private taskMetrics = {
     total: 0,
     completed: 0,
@@ -140,13 +181,16 @@ export class WorkerServer extends EventEmitter {
       requestTimeout: config.requestTimeout
     });
 
-    // Initialize process pool and task engine
-    this.processPool = new ClaudeProcessPool(config.processConfig, config.maxConcurrentTasks);
-    this.taskEngine = new TaskExecutionEngine(
-      config.processConfig.workspaceDir,
-      config.processConfig.tempDir,
-      this.processPool
-    );
+    // Initialize unified task engine
+    this.taskEngine = new UnifiedTaskExecutionEngine({
+      workspaceDir: config.processConfig.workspaceDir,
+      tempDir: config.processConfig.tempDir,
+      defaultExecutionMode: config.executionMode,
+      processConfig: config.processConfig,
+      containerConfig: config.containerConfig,
+      maxConcurrentTasks: config.maxConcurrentTasks,
+      sessionTimeout: config.sessionTimeout
+    });
     this.cpuUsageStart = process.cpuUsage();
 
     // Set up routes
@@ -185,7 +229,9 @@ export class WorkerServer extends EventEmitter {
           required: ['task'],
           properties: {
             task: { type: 'object' },
-            options: { type: 'object' }
+            options: { type: 'object' },
+            executionMode: { type: 'string', enum: Object.values(ExecutionMode) },
+            sessionId: { type: 'string' }
           }
         }
       }
@@ -194,6 +240,38 @@ export class WorkerServer extends EventEmitter {
     this.fastify.get('/tasks/:taskId', this.handleTaskStatus.bind(this));
     this.fastify.delete('/tasks/:taskId', this.handleTaskCancellation.bind(this));
     this.fastify.get('/tasks', this.handleTaskList.bind(this));
+
+    // Session management endpoints (for agentic mode)
+    if (this.config.enableAgenticMode) {
+      this.fastify.post('/sessions', {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['options'],
+            properties: {
+              options: { type: 'object' }
+            }
+          }
+        }
+      }, this.handleSessionCreation.bind(this));
+
+      this.fastify.post('/sessions/:sessionId/tasks', {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['task'],
+            properties: {
+              task: { type: 'object' },
+              options: { type: 'object' }
+            }
+          }
+        }
+      }, this.handleSessionExecution.bind(this));
+
+      this.fastify.get('/sessions/:sessionId', this.handleSessionStatus.bind(this));
+      this.fastify.delete('/sessions/:sessionId', this.handleSessionTermination.bind(this));
+      this.fastify.get('/sessions', this.handleSessionList.bind(this));
+    }
 
     // Worker status endpoints
     this.fastify.get('/status', this.handleWorkerStatus.bind(this));
@@ -269,8 +347,8 @@ export class WorkerServer extends EventEmitter {
         }
       }
 
-      // Shutdown process pool
-      await this.processPool.shutdown();
+      // Shutdown task engine (handles all providers)
+      await this.taskEngine.shutdown();
 
       // Close server
       await this.fastify.close();
@@ -289,7 +367,7 @@ export class WorkerServer extends EventEmitter {
     request: FastifyRequest<{ Body: TaskSubmissionRequest }>,
     reply: FastifyReply
   ): Promise<void> {
-    const { task, options } = request.body;
+    const { task, options, executionMode, sessionId } = request.body;
 
     try {
       // Validate task
@@ -310,13 +388,28 @@ export class WorkerServer extends EventEmitter {
 
       // Submit task for execution
       this.taskMetrics.total++;
-      const executionPromise = this.taskEngine.executeTask(task, options);
+      let executionPromise: Promise<TaskResult>;
+
+      if (sessionId && this.activeSessions.has(sessionId)) {
+        // Execute in existing session (agentic mode)
+        executionPromise = this.taskEngine.executeInSession(sessionId, task, options);
+      } else {
+        // Create new execution with specified mode
+        const mergedOptions = {
+          ...options,
+          executionMode: executionMode || this.config.executionMode
+        };
+        executionPromise = this.taskEngine.executeTask(task, mergedOptions);
+      }
+
       this.activeTasks.set(task.id, executionPromise);
 
       reply.code(202).send({
         message: 'Task submitted',
         taskId: task.id,
-        status: 'pending'
+        status: 'pending',
+        executionMode: executionMode || this.config.executionMode,
+        sessionId: sessionId || null
       });
     } catch (error) {
       this.fastify.log.error(error, 'Task submission failed:');
@@ -418,6 +511,207 @@ export class WorkerServer extends EventEmitter {
   }
 
   /**
+   * Handle session creation (agentic mode)
+   */
+  private async handleSessionCreation(
+    request: FastifyRequest<{ Body: SessionCreationRequest }>,
+    reply: FastifyReply
+  ): Promise<void> {
+    const { options } = request.body;
+
+    try {
+      const sessionId = await this.taskEngine.createSession(options);
+      this.activeSessions.set(sessionId, sessionId); // Track session
+      
+      reply.code(201).send({
+        message: 'Session created',
+        sessionId,
+        options,
+        expiresAt: new Date(Date.now() + this.config.sessionTimeout).toISOString()
+      });
+    } catch (error) {
+      this.fastify.log.error(error, 'Session creation failed:');
+      reply.code(500).send({
+        error: 'Failed to create session',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle session execution (agentic mode)
+   */
+  private async handleSessionExecution(
+    request: FastifyRequest<{ Params: { sessionId: string }; Body: SessionExecutionRequest }>,
+    reply: FastifyReply
+  ): Promise<void> {
+    const { sessionId } = request.params;
+    const { task, options } = request.body;
+
+    try {
+      // Check if session exists
+      if (!this.activeSessions.has(sessionId)) {
+        return reply.code(404).send({
+          error: 'Session not found',
+          sessionId
+        });
+      }
+
+      // Validate task
+      if (!task || !task.id || !task.title) {
+        return reply.code(400).send({
+          error: 'Invalid task',
+          message: 'Task must have id and title'
+        });
+      }
+
+      // Check if task already exists
+      if (this.activeTasks.has(task.id)) {
+        return reply.code(409).send({
+          error: 'Task already exists',
+          taskId: task.id
+        });
+      }
+
+      // Execute task in session
+      this.taskMetrics.total++;
+      const executionPromise = this.taskEngine.executeInSession(sessionId, task, options);
+      this.activeTasks.set(task.id, executionPromise);
+
+      reply.code(202).send({
+        message: 'Task submitted to session',
+        taskId: task.id,
+        sessionId,
+        status: 'pending'
+      });
+    } catch (error) {
+      this.fastify.log.error(error, 'Session execution failed:');
+      reply.code(500).send({
+        error: 'Failed to execute task in session',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle session status request
+   */
+  private async handleSessionStatus(
+    request: FastifyRequest<{ Params: { sessionId: string } }>,
+    reply: FastifyReply
+  ): Promise<void> {
+    const { sessionId } = request.params;
+
+    try {
+      if (!this.activeSessions.has(sessionId)) {
+        return reply.code(404).send({
+          error: 'Session not found',
+          sessionId
+        });
+      }
+
+      const session = this.taskEngine.getSession(sessionId);
+      if (!session) {
+        // Session expired or cleaned up
+        this.activeSessions.delete(sessionId);
+        return reply.code(404).send({
+          error: 'Session expired or not found',
+          sessionId
+        });
+      }
+
+      reply.send({
+        sessionId: session.sessionId,
+        containerId: session.containerId,
+        status: session.status,
+        createdAt: session.createdAt,
+        expiresAt: session.expiresAt,
+        taskCount: session.taskCount
+      });
+    } catch (error) {
+      this.fastify.log.error(error, 'Session status failed:');
+      reply.code(500).send({
+        error: 'Failed to get session status',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle session termination
+   */
+  private async handleSessionTermination(
+    request: FastifyRequest<{ Params: { sessionId: string } }>,
+    reply: FastifyReply
+  ): Promise<void> {
+    const { sessionId } = request.params;
+
+    try {
+      if (!this.activeSessions.has(sessionId)) {
+        return reply.code(404).send({
+          error: 'Session not found',
+          sessionId
+        });
+      }
+
+      await this.taskEngine.endSession(sessionId);
+      this.activeSessions.delete(sessionId);
+
+      reply.send({
+        message: 'Session terminated',
+        sessionId
+      });
+    } catch (error) {
+      this.fastify.log.error(error, 'Session termination failed:');
+      reply.code(500).send({
+        error: 'Failed to terminate session',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle session list request
+   */
+  private async handleSessionList(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const activeSessions = Array.from(this.activeSessions.keys());
+      const sessionDetails = [];
+
+      for (const sessionId of activeSessions) {
+        const session = this.taskEngine.getSession(sessionId);
+        if (session) {
+          sessionDetails.push({
+            sessionId: session.sessionId,
+            containerId: session.containerId,
+            status: session.status,
+            createdAt: session.createdAt,
+            expiresAt: session.expiresAt,
+            taskCount: session.taskCount
+          });
+        } else {
+          // Clean up stale session reference
+          this.activeSessions.delete(sessionId);
+        }
+      }
+
+      reply.send({
+        sessions: sessionDetails,
+        totalActiveSessions: sessionDetails.length
+      });
+    } catch (error) {
+      this.fastify.log.error(error, 'Session list failed:');
+      reply.code(500).send({
+        error: 'Failed to get session list',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
    * Handle health check
    */
   private async handleHealthCheck(
@@ -425,8 +719,8 @@ export class WorkerServer extends EventEmitter {
     reply: FastifyReply
   ): Promise<void> {
     try {
-      const processStats = this.processPool.getStats();
-      const isHealthy = processStats.total > 0;
+      const providerStats = this.taskEngine.getProviderStats();
+      const isHealthy = this.taskEngine.isHealthy();
 
       const response: HealthCheckResponse = {
         status: isHealthy ? 'healthy' : 'unhealthy',
@@ -436,8 +730,10 @@ export class WorkerServer extends EventEmitter {
         worker: {
           status: isHealthy ? 'idle' : 'starting',
           capabilities: await this.getCapabilities(),
-          processPool: processStats,
-          activeTasks: this.activeTasks.size
+          executionProviders: providerStats,
+          executionMode: this.config.executionMode,
+          activeTasks: this.activeTasks.size,
+          activeSessions: this.activeSessions.size
         },
         system: {
           memoryUsage: process.memoryUsage(),
@@ -465,12 +761,13 @@ export class WorkerServer extends EventEmitter {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
-    const processStats = this.processPool.getStats();
-    const isReady = processStats.available > 0;
+    const isReady = this.taskEngine.isReady();
+    const providerStats = this.taskEngine.getProviderStats();
 
     reply.code(isReady ? 200 : 503).send({
       ready: isReady,
-      processPool: processStats,
+      executionProviders: providerStats,
+      executionMode: this.config.executionMode,
       timestamp: new Date().toISOString()
     });
   }
@@ -497,7 +794,7 @@ export class WorkerServer extends EventEmitter {
     reply: FastifyReply
   ): Promise<void> {
     try {
-      const processStats = this.processPool.getStats();
+      const providerStats = this.taskEngine.getProviderStats();
       const uptime = (Date.now() - this.taskMetrics.startTime) / 1000 / 60; // minutes
       const avgExecutionTime = this.taskMetrics.executionTimes.length > 0
         ? this.taskMetrics.executionTimes.reduce((a, b) => a + b, 0) / this.taskMetrics.executionTimes.length
@@ -521,7 +818,9 @@ export class WorkerServer extends EventEmitter {
         resources: {
           memoryUsage: process.memoryUsage(),
           cpuUsage: process.cpuUsage(this.cpuUsageStart),
-          processPoolStats: processStats
+          executionProviders: providerStats,
+          executionMode: this.config.executionMode,
+          activeSessions: this.activeSessions.size
         }
       };
 
@@ -543,12 +842,15 @@ export class WorkerServer extends EventEmitter {
     reply: FastifyReply
   ): Promise<void> {
     try {
-      const processStats = this.processPool.getStats();
+      const providerStats = this.taskEngine.getProviderStats();
+      const isHealthy = this.taskEngine.isHealthy();
       
       reply.send({
-        status: processStats.total > 0 ? 'idle' : 'starting',
+        status: isHealthy ? 'idle' : 'starting',
         activeTasks: this.activeTasks.size,
-        processPool: processStats,
+        activeSessions: this.activeSessions.size,
+        executionProviders: providerStats,
+        executionMode: this.config.executionMode,
         uptime: process.uptime() * 1000,
         memoryUsage: process.memoryUsage()
       });
@@ -588,10 +890,11 @@ export class WorkerServer extends EventEmitter {
     reply: FastifyReply
   ): Promise<void> {
     try {
-      const stats = this.processPool.getStats();
+      const providers = this.taskEngine.getProviderStats();
       
       reply.send({
-        processPool: stats,
+        executionProviders: providers,
+        executionMode: this.config.executionMode,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -656,7 +959,13 @@ export class WorkerServer extends EventEmitter {
       claudeCodeVersion: 'latest',
       nodeVersion: process.version,
       operatingSystem: process.platform,
-      architecture: process.arch
+      architecture: process.arch,
+      executionModes: Object.values(ExecutionMode),
+      defaultExecutionMode: this.config.executionMode,
+      supportsAgenticMode: this.config.enableAgenticMode,
+      supportsContainerExecution: this.config.executionMode === ExecutionMode.CONTAINER_AGENTIC || this.config.enableAgenticMode,
+      sessionTimeout: this.config.sessionTimeout,
+      containerImage: this.config.containerConfig?.image
     };
   }
 

@@ -7,7 +7,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
-import { LogLevel } from '@claudecluster/core';
+import { LogLevel, ExecutionMode, createExecutionConfigFromEnv } from '@claudecluster/core';
+import type { ExecutionConfigType } from '@claudecluster/core';
 
 /**
  * Environment enumeration (local definition)
@@ -46,7 +47,44 @@ export const WorkerConfigSchema = BaseConfigSchema.extend({
   workspaceDir: z.string().default('./workspace'),
   tempDir: z.string().default('./temp'),
   enableMetrics: z.boolean().default(true),
-  enableTracing: z.boolean().default(false)
+  enableTracing: z.boolean().default(false),
+  
+  // Execution configuration
+  executionMode: z.nativeEnum(ExecutionMode).default(ExecutionMode.PROCESS_POOL),
+  enableAgenticMode: z.boolean().default(false),
+  sessionTimeout: z.number().int().positive().default(3600000), // 1 hour
+  
+  // Container configuration
+  containerConfig: z.object({
+    image: z.string().default('ghcr.io/anthropics/claude-code:latest'),
+    registry: z.string().default('ghcr.io'),
+    networkName: z.string().default('claudecluster-network'),
+    resourceLimits: z.object({
+      memory: z.number().positive().default(2 * 1024 * 1024 * 1024), // 2GB
+      cpu: z.number().positive().default(1024), // CPU shares
+      timeout: z.number().positive().default(300) // 5 minutes
+    }),
+    securityOptions: z.array(z.string()).default(['no-new-privileges:true']),
+    autoRemove: z.boolean().default(true),
+    enableHealthChecks: z.boolean().default(true)
+  }).optional(),
+  
+  // Process pool configuration
+  processPoolConfig: z.object({
+    maxProcesses: z.number().int().positive().default(5),
+    minProcesses: z.number().int().nonnegative().default(1),
+    processTimeout: z.number().int().positive().default(300000), // 5 minutes
+    idleTimeout: z.number().int().positive().default(600000), // 10 minutes
+    healthCheckInterval: z.number().int().positive().default(30000) // 30 seconds
+  }).optional(),
+  
+  // Feature flags
+  featureFlags: z.object({
+    allowModeOverride: z.boolean().default(true),
+    enableResourceMonitoring: z.boolean().default(true),
+    enablePerformanceMetrics: z.boolean().default(true),
+    experimentalFeatures: z.array(z.string()).default([])
+  }).default({})
 });
 
 /**
@@ -303,4 +341,40 @@ export function loadMcpConfig(options?: Parameters<typeof configManager.loadWith
     ...options
   });
   return result as McpConfigType;
+}
+
+/**
+ * Load comprehensive execution configuration for workers
+ * 
+ * This function provides a simplified approach that prioritizes environment-based
+ * configuration but allows override of specific values from config files.
+ */
+export function loadExecutionConfig(): ExecutionConfigType {
+  // Start with environment-based configuration
+  let config = createExecutionConfigFromEnv();
+  
+  // Try to load additional configuration from files and merge key values
+  try {
+    const fileConfig = configManager.loadWithFallbacks(WorkerConfigSchema, {
+      envPrefix: 'WORKER_',
+      jsonFile: './config/worker.json',
+      yamlFile: './config/worker.yaml'
+    });
+    
+    // Simple merge of key performance and execution mode values
+    // More complex merging is handled by the execution providers themselves
+    config = {
+      ...config,
+      mode: fileConfig.executionMode ?? config.mode,
+      performance: {
+        ...config.performance,
+        maxConcurrentTasks: fileConfig.maxConcurrentTasks ?? config.performance.maxConcurrentTasks
+      }
+    };
+    
+  } catch (error) {
+    // If file loading fails, use environment-based config as-is
+  }
+  
+  return config;
 }

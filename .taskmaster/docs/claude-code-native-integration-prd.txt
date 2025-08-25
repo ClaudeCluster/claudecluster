@@ -1,0 +1,617 @@
+# Claude Code Native Features Integration for Agentic Mode - PRD
+
+## Executive Summary
+**Direct Claude Code interaction is the primary interface** - we interact with Claude Code through its native CLI, commands, and features rather than building custom workarounds. The container provides isolation, but all actual work is done through Claude Code's native capabilities.
+
+## Core Philosophy: Native Claude Code as Primary Interface
+
+### Direct Interaction Principle
+```
+User Request → Container → Claude Code CLI → Native Features → Response
+                            ↑
+                    (NO custom workarounds)
+                    (NO process manipulation)
+                    (USE native commands only)
+```
+
+## Native Features Integration Strategy
+
+### 1. Direct CLI Communication
+
+#### Pure Claude Code Interaction
+```typescript
+class ClaudeCodeDirectInterface {
+  private claudeSession: ReadableStream;
+  private claudeInput: WritableStream;
+  
+  async startClaudeSession() {
+    // Start Claude Code in its native interactive mode
+    const claude = spawn('claude', [], {
+      cwd: '/workspace/repo',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        CLAUDE_API_KEY: this.apiKey
+      }
+    });
+    
+    // Direct pipe to Claude's native interface
+    this.claudeInput = claude.stdin;
+    this.claudeSession = claude.stdout;
+    
+    // Wait for Claude's native prompt
+    await this.waitForClaudeReady();
+  }
+  
+  async sendToClaudeDirectly(prompt: string) {
+    // Send directly to Claude Code - no intermediaries
+    this.claudeInput.write(`${prompt}\n`);
+    
+    // Get Claude's native response
+    return await this.readClaudeResponse();
+  }
+  
+  async executeClaudeCommand(command: string) {
+    // Use Claude's native slash commands directly
+    return await this.sendToClaudeDirectly(command);
+  }
+}
+```
+
+### 2. Native Command Execution (No Workarounds)
+
+#### Direct Claude Code Commands Only
+```typescript
+class NativeClaudeCommands {
+  // ONLY use Claude's native commands - no custom implementations
+  
+  async useNativeCommands(task: Task) {
+    // Model switching - native command
+    await this.claude.send('/model claude-3-opus');
+    
+    // Context management - native commands
+    await this.claude.send('/clear');  // Clear context
+    await this.claude.send('/compact'); // Compact context
+    
+    // Code review - native feature
+    await this.claude.send('/review');
+    
+    // Project understanding - native feature
+    await this.claude.send('/project');
+    
+    // MCP tools - native feature
+    await this.claude.send('/mcp');
+    
+    // Help and navigation - native
+    await this.claude.send('/help');
+  }
+  
+  async letClaudeDecide(task: Task) {
+    // Instead of programmatic routing, let Claude use its intelligence
+    const prompt = `
+      Task: ${task.description}
+      Complexity: ${task.complexity}
+      Requirements: ${task.requirements}
+      
+      Please handle this task using your native capabilities.
+      Use Plan Mode if needed for safety.
+      Use sub-agents if parallelization would help.
+      Manage context as you see fit.
+    `;
+    
+    // Send to Claude and let it handle natively
+    await this.claude.send(prompt);
+  }
+}
+```
+
+### 3. Plan Mode Integration
+
+#### Safe Execution with Native Plan Mode
+```typescript
+class PlanModeController {
+  async executeSafeTask(task: Task) {
+    // 1. Enter Plan Mode (Shift+Tab twice equivalent)
+    await this.sendKeySequence('\x1b[Z\x1b[Z'); // Terminal escape sequence
+    
+    // 2. Send task for planning
+    await this.sendPrompt(`
+      [PLAN MODE ACTIVE]
+      Task: ${task.description}
+      Requirements: ${task.requirements}
+      
+      Please outline your approach before making changes.
+    `);
+    
+    // 3. Review plan
+    const plan = await this.capturePlan();
+    
+    // 4. Approve or modify plan
+    if (await this.validatePlan(plan)) {
+      await this.sendPrompt('Proceed with the plan');
+    } else {
+      await this.sendPrompt('Modify plan with: ' + this.getPlanModifications());
+    }
+  }
+  
+  private async validatePlan(plan: string): Promise<boolean> {
+    // Intelligent plan validation
+    return !plan.includes('rm -rf') && 
+           !plan.includes('sudo') &&
+           this.checkScopeCompliance(plan);
+  }
+}
+```
+
+### 4. Sub-Agents & Task Tool Integration
+
+#### Parallel Task Execution with Native Sub-Agents
+```typescript
+class SubAgentOrchestrator {
+  async executeParallelTasks(tasks: Task[]) {
+    // Leverage native Task Tool for parallel execution
+    const subAgentPromises = tasks.map(async (task) => {
+      // Start sub-agent for each task
+      const subAgentCommand = this.buildSubAgentCommand(task);
+      
+      // Native sub-agent creation
+      await this.executeCommand(`
+        [Starting sub-agent]
+        ${subAgentCommand}
+      `);
+      
+      // Track sub-agent bubble in UI
+      return this.trackSubAgentProgress(task.id);
+    });
+    
+    // Wait for all sub-agents to complete
+    const results = await Promise.all(subAgentPromises);
+    
+    // Aggregate results
+    return this.mergeSubAgentResults(results);
+  }
+  
+  async useRoleBasedAgents(task: ComplexTask) {
+    // Use specialized role agents
+    const agents = [
+      { role: 'security-reviewer', prompt: 'Review for security issues' },
+      { role: 'performance-optimizer', prompt: 'Optimize for performance' },
+      { role: 'test-writer', prompt: 'Write comprehensive tests' }
+    ];
+    
+    // Launch role-specific sub-agents simultaneously
+    const agentResults = await Promise.all(
+      agents.map(agent => this.launchRoleAgent(agent, task))
+    );
+    
+    // Synthesize perspectives
+    return this.synthesizeAgentFeedback(agentResults);
+  }
+}
+```
+
+### 5. Hooks System Integration
+
+#### Lifecycle Management with Native Hooks
+```typescript
+class HooksManager {
+  async setupAgenticHooks() {
+    // Create hooks for container lifecycle
+    const hooks = {
+      // Pre-execution validation
+      'pre-tool-use': `#!/bin/bash
+        # Validate tool usage within container limits
+        if [[ "$TOOL" == "bash" ]]; then
+          check_resource_limits
+          validate_command_safety "$COMMAND"
+        fi
+      `,
+      
+      // Post-execution cleanup
+      'post-tool-use': `#!/bin/bash
+        # Clean up temporary files
+        cleanup_workspace
+        # Update session metrics
+        update_metrics "$TOOL" "$DURATION"
+      `,
+      
+      // Session monitoring
+      'prompt-submit': `#!/bin/bash
+        # Log prompt for audit
+        echo "$(date): $PROMPT" >> /workspace/.session.log
+        # Check session timeout
+        check_session_timeout
+      `,
+      
+      // Resource management
+      'context-compact': `#!/bin/bash
+        # Triggered on auto-compact
+        notify_orchestrator "context_compacted"
+        save_context_snapshot
+      `
+    };
+    
+    // Install hooks in container
+    for (const [event, script] of Object.entries(hooks)) {
+      await this.installHook(event, script);
+    }
+  }
+  
+  private async installHook(event: string, script: string) {
+    const hookPath = `~/.claude/hooks/${event}.sh`;
+    await fs.writeFile(hookPath, script);
+    await fs.chmod(hookPath, '755');
+  }
+}
+```
+
+### 6. Context Management Strategy
+
+#### Smart Context Handling with Native Features
+```typescript
+class ContextManager {
+  private contextWindow = 200000; // Claude's context limit
+  private compactionThreshold = 0.8;
+  
+  async manageContext(session: Session) {
+    // Monitor context usage
+    const usage = await this.getContextUsage();
+    
+    if (usage > this.contextWindow * this.compactionThreshold) {
+      // Use native auto-compact
+      await this.executeCommand('/compact');
+      
+      // Save important context before compaction
+      await this.saveContextSnapshot();
+    }
+  }
+  
+  async smartContextReset(newTask: Task) {
+    if (this.isUnrelatedTask(newTask)) {
+      // Clear context but keep CLAUDE.md
+      await this.executeCommand('/clear');
+      
+      // Re-inject relevant context
+      await this.injectTaskContext(newTask);
+    }
+  }
+  
+  private async injectTaskContext(task: Task) {
+    // Provide focused context for new task
+    await this.sendPrompt(`
+      Context for new task:
+      - Repository: ${task.repo}
+      - Previous work: ${this.getRelevantHistory(task)}
+      - Dependencies: ${task.dependencies}
+    `);
+  }
+}
+```
+
+### 7. Custom Commands for Agentic Mode
+
+#### Extending Claude with Agentic Commands
+```typescript
+class CustomCommandsManager {
+  async installAgenticCommands() {
+    const commands = {
+      // Session management commands
+      'agentic-status.md': `
+# /agentic-status
+
+Shows current agentic session information.
+
+## Usage
+\`\`\`
+/agentic-status
+\`\`\`
+
+## Output
+- Session ID
+- Container ID
+- Resource usage
+- Time remaining
+- Task progress
+      `,
+      
+      // Container control commands
+      'agentic-extend.md': `
+# /agentic-extend
+
+Extends the current session timeout.
+
+## Usage
+\`\`\`
+/agentic-extend [minutes]
+\`\`\`
+
+## Example
+\`\`\`
+/agentic-extend 30  # Extend by 30 minutes
+\`\`\`
+      `,
+      
+      // Resource management
+      'agentic-resources.md': `
+# /agentic-resources
+
+Display and manage container resources.
+
+## Usage
+\`\`\`
+/agentic-resources [show|increase|decrease]
+\`\`\`
+      `
+    };
+    
+    // Install custom commands in container
+    for (const [filename, content] of Object.entries(commands)) {
+      const path = `~/.claude/commands/${filename}`;
+      await fs.writeFile(path, content);
+    }
+  }
+}
+```
+
+### 8. Output Styles for Specialized Domains
+
+#### Domain-Specific Personality Configuration
+```typescript
+class OutputStyleManager {
+  async configureForTask(task: Task) {
+    const styles = {
+      'security-audit': {
+        prompt: 'You are a security expert. Focus on vulnerabilities and best practices.',
+        tone: 'professional, cautious',
+        format: 'structured security report'
+      },
+      'performance-optimization': {
+        prompt: 'You are a performance engineer. Focus on efficiency and speed.',
+        tone: 'analytical, data-driven',
+        format: 'benchmarks and metrics'
+      },
+      'code-review': {
+        prompt: 'You are a senior code reviewer. Focus on quality and maintainability.',
+        tone: 'constructive, educational',
+        format: 'review comments with suggestions'
+      }
+    };
+    
+    if (styles[task.type]) {
+      await this.applyOutputStyle(styles[task.type]);
+    }
+  }
+  
+  private async applyOutputStyle(style: OutputStyle) {
+    // Configure Claude's output style
+    await this.executeCommand(`/style set ${JSON.stringify(style)}`);
+  }
+}
+```
+
+### 9. Image Support Integration
+
+#### Visual Debugging with Native Image Analysis
+```typescript
+class VisualDebugger {
+  async analyzeUIIssue(screenshot: string, issue: string) {
+    // Use native image support for UI debugging
+    await this.sendPromptWithImage(
+      `Analyze this UI issue: ${issue}`,
+      screenshot
+    );
+  }
+  
+  async compareVisualChanges(before: string, after: string) {
+    // Send multiple images for comparison
+    await this.sendPrompt('Compare these UI states:');
+    await this.attachImage(before, 'Before changes');
+    await this.attachImage(after, 'After changes');
+    await this.sendPrompt('What are the visual differences?');
+  }
+}
+```
+
+### 10. Smart Session Configuration
+
+#### Optimized Claude Code Configuration
+```typescript
+class SessionConfigurator {
+  async configureOptimalSession(task: Task) {
+    const config = {
+      // Trust settings based on task requirements
+      trust: {
+        allowedTools: this.getAllowedTools(task),
+        permissions: this.getPermissions(task),
+        maxFileSize: task.requiresLargeFiles ? '100MB' : '10MB'
+      },
+      
+      // Performance settings
+      performance: {
+        autoCompact: true,
+        compactThreshold: 0.8,
+        parallelSubAgents: task.parallelizable ? 5 : 1
+      },
+      
+      // Safety settings
+      safety: {
+        planMode: task.riskLevel === 'high',
+        requireConfirmation: task.destructive,
+        sandboxMode: task.untrusted
+      }
+    };
+    
+    // Apply configuration
+    await this.applyConfig(config);
+  }
+  
+  private getAllowedTools(task: Task): string[] {
+    // Intelligently determine which tools to allow
+    const base = ['read', 'write', 'search'];
+    
+    if (task.requiresExecution) base.push('bash');
+    if (task.requiresWeb) base.push('webfetch');
+    if (task.requiresDocker) base.push('docker');
+    
+    return base;
+  }
+}
+```
+
+## Implementation Architecture
+
+### Container Session Flow with Native Features
+
+```mermaid
+graph TD
+    A[Task Request] --> B[Spawn Container]
+    B --> C[Initialize Claude Code CLI]
+    C --> D[Configure Native Features]
+    
+    D --> E[Setup Hooks]
+    D --> F[Install Custom Commands]
+    D --> G[Configure Output Style]
+    
+    E --> H[Session Ready]
+    F --> H
+    G --> H
+    
+    H --> I{Task Type?}
+    
+    I -->|Complex| J[Enable UltraThink]
+    I -->|Risky| K[Enable Plan Mode]
+    I -->|Parallel| L[Launch Sub-Agents]
+    I -->|Simple| M[Direct Execution]
+    
+    J --> N[Execute Task]
+    K --> N
+    L --> N
+    M --> N
+    
+    N --> O{Context Full?}
+    O -->|Yes| P[Auto-Compact]
+    O -->|No| Q[Continue]
+    
+    P --> Q
+    Q --> R[Task Complete]
+    
+    R --> S[Cleanup Hooks]
+    S --> T[Container Termination]
+```
+
+## Integration Benefits
+
+### 1. **Leveraging Native Power**
+- Use Claude's built-in features instead of reimplementing
+- Benefit from Anthropic's optimizations
+- Automatic updates with new Claude Code versions
+
+### 2. **Intelligent Automation**
+- Smart command routing based on task type
+- Automatic context management
+- Parallel execution with sub-agents
+
+### 3. **Enhanced Safety**
+- Plan Mode for risky operations
+- Hooks for validation and cleanup
+- Sandboxed execution environment
+
+### 4. **Performance Optimization**
+- Context compaction when needed
+- Parallel sub-agent execution
+- Resource-aware execution
+
+### 5. **Developer Experience**
+- Familiar Claude Code commands
+- Custom agentic extensions
+- Visual debugging support
+
+## Implementation Phases
+
+### Phase 1: Core CLI Integration (Week 1)
+- [ ] Set up Claude Code CLI in container
+- [ ] Implement command execution wrapper
+- [ ] Create output parsing system
+- [ ] Test basic command flow
+
+### Phase 2: Native Features Activation (Week 2)
+- [ ] Implement Plan Mode controller
+- [ ] Set up hooks system
+- [ ] Configure context management
+- [ ] Enable sub-agents
+
+### Phase 3: Smart Routing (Week 3)
+- [ ] Build task analyzer
+- [ ] Implement command router
+- [ ] Create feature selector
+- [ ] Add optimization logic
+
+### Phase 4: Custom Extensions (Week 4)
+- [ ] Develop agentic commands
+- [ ] Create output styles
+- [ ] Build monitoring hooks
+- [ ] Implement session controls
+
+## Success Metrics
+
+### Performance Metrics
+- Context utilization: > 90% efficiency
+- Sub-agent parallelization: 5x speedup for parallel tasks
+- Command latency: < 100ms for slash commands
+- Plan Mode accuracy: > 95% safe execution
+
+### Feature Utilization
+- Hooks usage: 100% of sessions
+- Sub-agents: Used for > 30% of complex tasks
+- Context compaction: Automatic with < 5% data loss
+- Custom commands: > 50% adoption rate
+
+## Configuration Examples
+
+### Optimal Session Configuration
+```json
+{
+  "claude_code": {
+    "version": "latest",
+    "features": {
+      "plan_mode": true,
+      "ultra_think": true,
+      "sub_agents": true,
+      "hooks": true,
+      "custom_commands": true,
+      "image_support": true
+    },
+    "context": {
+      "auto_compact": true,
+      "compact_threshold": 0.8,
+      "max_window": 200000
+    },
+    "safety": {
+      "require_plan_for_destructive": true,
+      "sandbox_untrusted": true,
+      "audit_logging": true
+    },
+    "performance": {
+      "parallel_agents": 5,
+      "cache_responses": true,
+      "optimize_context": true
+    }
+  }
+}
+```
+
+## Conclusion
+
+By intelligently leveraging Claude Code's native features, we create an agentic mode that:
+- **Maximizes Claude's capabilities** through native feature usage
+- **Ensures safety** with Plan Mode and hooks
+- **Optimizes performance** with smart context management and sub-agents
+- **Extends functionality** with custom commands while maintaining compatibility
+- **Provides superior UX** through familiar Claude Code interfaces
+
+This approach ensures we're not just containerizing Claude Code, but creating a sophisticated orchestration layer that amplifies its native capabilities for enterprise-scale agentic coding.
+
+---
+Document Version: 1.0
+Last Updated: 2024-08-25
+Status: Draft

@@ -1,0 +1,207 @@
+# ClaudeCluster MCP Container Prototype - Product Requirements Document
+
+## Executive Summary
+
+Create a proof-of-concept MCP (Model Context Protocol) server that demonstrates the core agentic mode concept where a primary Claude Code instance can spawn and control containerized Claude Code instances. This prototype validates the architecture for dynamic container spawning per coding session.
+
+## Project Goals
+
+- Validate MCP → Docker container spawning workflow
+- Test communication between primary and containerized Claude
+- Demonstrate session isolation and lifecycle management
+- Provide immediate tangible results for stakeholder buy-in
+
+## Architecture Overview
+
+```
+Primary Claude Code (with MCP)
+        ↓
+   MCP Server Tool
+        ↓
+  Docker API Client
+        ↓
+  Spawn Container
+        ↓
+Containerized Claude Code
+        ↓
+   Execute Task
+        ↓
+  Return Results
+```
+
+## Core Components
+
+### 1. MCP Server Tool Extension
+- **Component**: `ContainerSpawnerTool` class
+- **Location**: `packages/mcp/src/tools/container-spawner.ts`
+- **Purpose**: Handles container lifecycle management, Docker API integration
+- **Key Features**:
+  - Spawn Docker containers using official Anthropic image
+  - Execute tasks in containerized Claude Code
+  - Capture output and return results
+  - Clean up containers automatically
+
+### 2. Container Wrapper Script
+- **Component**: Bash wrapper script
+- **Location**: Container filesystem at `/usr/local/bin/claude-prototype-wrapper.sh`
+- **Purpose**: Runs inside container to execute Claude Code
+- **Key Features**:
+  - Clone repository if provided
+  - Authenticate Claude Code with API key
+  - Execute task with Claude Code
+  - Return completion status
+
+### 3. MCP Server Configuration
+- **Component**: Updated `MCPServer` class
+- **Location**: `packages/mcp/src/server/index.ts`
+- **Purpose**: Register and handle container spawner tool
+- **Key Features**:
+  - Register `spawn_claude_container` tool
+  - Handle tool calls from primary Claude
+  - Route requests to container spawner
+
+### 4. Docker Compose Setup
+- **Component**: Docker Compose configuration
+- **Location**: `docker-compose.prototype.yml`
+- **Purpose**: Configure MCP server with Docker access
+- **Key Features**:
+  - MCP server with Docker socket access
+  - Pre-pull official Claude Code image
+  - Environment variable configuration
+
+## Technical Requirements
+
+### Container Specifications
+- **Base Image**: `ghcr.io/anthropics/claude-code:latest`
+- **Memory Limit**: 2GB per container
+- **Network**: Bridge mode for isolation
+- **Auto-cleanup**: Containers remove themselves after task completion
+- **Timeout**: 300 seconds default session timeout
+
+### Communication Protocol
+- **Input**: Task description, optional repository URL
+- **Output**: Session ID, Container ID, execution results
+- **Error Handling**: Proper cleanup on failures
+- **Streaming**: Support for real-time output capture
+
+### Security & Isolation
+- **Container Isolation**: Each task runs in separate container
+- **API Key Management**: Secure passing of Claude API keys
+- **Resource Limits**: Memory and CPU constraints
+- **Network Isolation**: Containers cannot access host network
+
+## Testing Workflow
+
+### Phase 1: Basic Container Spawning
+1. Start MCP server with container support
+2. Test container creation and destruction
+3. Verify Docker API integration
+4. Validate resource cleanup
+
+### Phase 2: Task Execution
+1. Send simple coding task to container
+2. Verify Claude Code execution inside container
+3. Test output capture and return
+4. Validate session lifecycle
+
+### Phase 3: Repository Integration
+1. Test repository cloning inside container
+2. Verify file system access and modifications
+3. Test multi-file task execution
+4. Validate workspace isolation
+
+### Phase 4: Concurrent Sessions
+1. Test multiple simultaneous containers
+2. Verify session isolation
+3. Test resource management under load
+4. Validate concurrent task execution
+
+## Success Criteria
+
+### Performance Metrics
+- Container spawns in < 10 seconds
+- Task execution completes successfully
+- Results return to primary Claude
+- Container cleans up automatically
+- Multiple concurrent containers work
+
+### Technical Validation
+- Docker API integration works correctly
+- Communication protocols function properly
+- Session management handles edge cases
+- Security isolation is effective
+- Resource usage stays within limits
+
+## Implementation Timeline
+
+### Week 1: Core Implementation
+- Day 1-2: Implement ContainerSpawnerTool class
+- Day 3: Create container wrapper script
+- Day 4: Update MCP server registration
+- Day 5: Create Docker Compose configuration
+
+### Week 2: Testing & Validation
+- Day 1-2: Basic container spawning tests
+- Day 3: Task execution validation
+- Day 4: Repository integration testing
+- Day 5: Concurrent session testing
+
+## Risk Mitigation
+
+### Technical Risks
+- **Container startup latency**: Pre-warm containers, optimize image size
+- **Resource exhaustion**: Implement proper limits and cleanup
+- **Network issues**: Add retry logic and timeout handling
+- **API failures**: Implement fallback mechanisms
+
+### Operational Risks
+- **Docker daemon issues**: Health checks and restart policies
+- **Storage limitations**: Implement cleanup strategies
+- **Memory leaks**: Monitor and cleanup expired sessions
+- **Security vulnerabilities**: Regular image updates, minimal privileges
+
+## Future Extensions
+
+### Phase 1 Learnings Application
+- Docker API integration patterns
+- Communication protocols between Claude instances
+- Session management requirements
+- Performance characteristics
+- Security isolation effectiveness
+
+### Next Phase Integration
+- Extend to full transformation architecture
+- Support for Kubernetes orchestration
+- Advanced session management features
+- Enterprise security and monitoring
+- Multi-cloud deployment support
+
+## Dependencies
+
+### External Dependencies
+- Docker Engine installed and running
+- Official Anthropic Claude Code image available
+- Claude API keys configured
+- Network connectivity for image pulls
+
+### Internal Dependencies
+- `@claudecluster/mcp` package with Docker support
+- `@claudecluster/core` types and interfaces
+- `@claudecluster/shared` utilities
+- Existing MCP server infrastructure
+
+## Deployment Requirements
+
+### Development Environment
+- Docker Desktop or Docker Engine
+- Node.js 18+ with pnpm
+- Claude API key for authentication
+- Local registry access for testing
+
+### Production Considerations
+- Container registry for image management
+- Monitoring and logging infrastructure
+- Resource scaling and limits
+- Backup and recovery procedures
+
+This prototype serves as the foundation for the full ClaudeCluster agentic mode transformation, providing immediate validation of the core concepts while establishing patterns for the complete implementation.

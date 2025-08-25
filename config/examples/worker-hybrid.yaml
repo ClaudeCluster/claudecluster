@@ -1,0 +1,51 @@
+# Hybrid configuration supporting both execution modes
+environment: staging
+logLevel: info
+version: 0.1.0
+workerId: worker-hybrid-1
+port: 3001
+host: 0.0.0.0
+maxConcurrentTasks: 10
+taskTimeout: 300000
+healthCheckInterval: 30000
+claudeCodePath: /usr/local/bin/claude-code
+workspaceDir: ./workspace
+tempDir: ./temp
+enableMetrics: true
+enableTracing: true
+
+# Primary mode with fallback support
+executionMode: container_agentic
+enableAgenticMode: true
+sessionTimeout: 3600000
+
+# Container configuration for agentic mode
+containerConfig:
+  image: claudecluster/claude-agentic:latest
+  registry: ghcr.io
+  networkName: claudecluster-network
+  resourceLimits:
+    memory: 2147483648  # 2GB
+    cpu: 1024
+    timeout: 300
+  securityOptions:
+    - "no-new-privileges:true"
+  autoRemove: true
+  enableHealthChecks: true
+
+# Process pool configuration for fallback mode
+processPoolConfig:
+  maxProcesses: 5
+  minProcesses: 1
+  processTimeout: 300000
+  idleTimeout: 600000
+  healthCheckInterval: 30000
+
+# Feature flags
+featureFlags:
+  allowModeOverride: true
+  enableResourceMonitoring: true
+  enablePerformanceMetrics: true
+  experimentalFeatures:
+    - "automatic-fallback"
+    - "performance-based-routing"

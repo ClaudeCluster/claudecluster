@@ -1,0 +1,35 @@
+{
+  "environment": "development",
+  "logLevel": "info",
+  "version": "0.1.0",
+  "workerId": "worker-process-pool-1",
+  "port": 3001,
+  "host": "0.0.0.0",
+  "maxConcurrentTasks": 5,
+  "taskTimeout": 300000,
+  "healthCheckInterval": 30000,
+  "claudeCodePath": "/usr/local/bin/claude-code",
+  "workspaceDir": "./workspace",
+  "tempDir": "./temp",
+  "enableMetrics": true,
+  "enableTracing": false,
+  
+  "executionMode": "process_pool",
+  "enableAgenticMode": false,
+  "sessionTimeout": 600000,
+  
+  "processPoolConfig": {
+    "maxProcesses": 5,
+    "minProcesses": 2,
+    "processTimeout": 300000,
+    "idleTimeout": 600000,
+    "healthCheckInterval": 30000
+  },
+  
+  "featureFlags": {
+    "allowModeOverride": true,
+    "enableResourceMonitoring": true,
+    "enablePerformanceMetrics": true,
+    "experimentalFeatures": []
+  }
+}

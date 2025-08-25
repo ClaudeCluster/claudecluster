@@ -10,6 +10,8 @@ import { ClaudeIntegration, type ClaudeAPIConfig } from '../claude/index.js';
 import { ClaudeDriver, createDriver } from '@claudecluster/driver';
 import type { Task, TaskResult, Worker } from '@claudecluster/core';
 import { TaskStatus } from '@claudecluster/core';
+import { MCPContainerSpawnerTool, type ContainerExecutionResult, type ContainerSpawnerParams } from '../tools/container-spawner.js';
+import { pino, type Logger } from 'pino';
 
 /**
  * MCP server configuration
@@ -70,6 +72,8 @@ export class MCPServer extends EventEmitter {
   private fastify: FastifyInstance;
   private claudeIntegration: ClaudeIntegration;
   private driver?: ClaudeDriver;
+  private containerSpawner: MCPContainerSpawnerTool;
+  private logger: Logger;
   private sessions = new Map<string, MCPSession>();
   private websocketSessions = new Map<string, WebSocket>();
   private isRunning = false;
@@ -80,16 +84,22 @@ export class MCPServer extends EventEmitter {
     
     this.config = { ...DEFAULT_MCP_CONFIG, ...config };
     
+    // Initialize logger
+    this.logger = pino({
+      level: process.env.LOG_LEVEL || 'info',
+      prettyPrint: process.env.NODE_ENV === 'development'
+    });
+    
     // Initialize Fastify
     this.fastify = Fastify({
-      logger: {
-        level: 'info',
-        prettyPrint: process.env.NODE_ENV === 'development'
-      }
+      logger: this.logger
     });
 
     // Initialize Claude integration
     this.claudeIntegration = new ClaudeIntegration(this.config.claudeConfig);
+    
+    // Initialize Container Spawner Tool
+    this.containerSpawner = new MCPContainerSpawnerTool(this.logger);
     
     this.setupRoutes();
     this.setupEventHandlers();
@@ -138,6 +148,11 @@ export class MCPServer extends EventEmitter {
     this.fastify.get('/cluster/status', this.handleClusterStatus.bind(this));
     this.fastify.get('/cluster/workers', this.handleClusterWorkers.bind(this));
     this.fastify.get('/cluster/tasks', this.handleClusterTasks.bind(this));
+
+    // Container spawner endpoints
+    this.fastify.post('/container/spawn', this.handleSpawnContainer.bind(this));
+    this.fastify.get('/container/list', this.handleListContainers.bind(this));
+    this.fastify.get('/container/docker-info', this.handleDockerInfo.bind(this));
 
     // Error handler
     this.fastify.setErrorHandler(this.handleError.bind(this));
@@ -264,6 +279,10 @@ export class MCPServer extends EventEmitter {
         
         case 'get_cluster_stats':
           await this.handleGetClusterStats(sessionId);
+          break;
+        
+        case 'spawn_claude_container':
+          await this.handleSpawnContainerTool(sessionId, toolCall.arguments);
           break;
         
         default:
@@ -429,6 +448,46 @@ export class MCPServer extends EventEmitter {
   }
 
   /**
+   * Handle spawn container tool call
+   */
+  private async handleSpawnContainerTool(sessionId: string, args: ContainerSpawnerParams): Promise<void> {
+    this.logger.info({ sessionId, args }, 'Spawning container via tool call');
+
+    try {
+      const result = await this.containerSpawner.execute(args);
+      
+      const session = this.sessions.get(sessionId);
+      const websocket = this.websocketSessions.get(sessionId);
+      
+      if (session && websocket) {
+        const notification = session.sendNotification('tool_result', {
+          tool: 'spawn_claude_container',
+          result
+        });
+        websocket.send(notification);
+      }
+
+      this.logger.info({ sessionId, containerId: result.containerId }, 'Container spawned successfully');
+
+    } catch (error) {
+      this.logger.error({ sessionId, error }, 'Error spawning container');
+      
+      const session = this.sessions.get(sessionId);
+      const websocket = this.websocketSessions.get(sessionId);
+      
+      if (session && websocket) {
+        const errorNotification = session.sendNotification('error', {
+          tool: 'spawn_claude_container',
+          message: error instanceof Error ? error.message : String(error)
+        });
+        websocket.send(errorNotification);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Handle health check
    */
   private async handleHealthCheck(
@@ -469,12 +528,24 @@ export class MCPServer extends EventEmitter {
       capabilities: {
         websocket: this.config.enableWebSocket,
         http: this.config.enableHTTP,
-        authentication: this.config.enableAuthentication
+        authentication: this.config.enableAuthentication,
+        containerSpawning: true,
+        dockerIntegration: true
       },
       endpoints: {
         websocket: this.config.enableWebSocket ? '/ws' : null,
-        http: this.config.enableHTTP ? '/mcp' : null
-      }
+        http: this.config.enableHTTP ? '/mcp' : null,
+        containerSpawn: '/container/spawn',
+        containerList: '/container/list',
+        dockerInfo: '/container/docker-info'
+      },
+      tools: [
+        'submit_parallel_task',
+        'get_task_status', 
+        'list_cluster_workers',
+        'get_cluster_stats',
+        'spawn_claude_container'
+      ]
     });
   }
 
@@ -567,6 +638,88 @@ export class MCPServer extends EventEmitter {
   }
 
   /**
+   * Handle spawn container HTTP request
+   */
+  private async handleSpawnContainer(
+    request: FastifyRequest<{ Body: ContainerSpawnerParams }>,
+    reply: FastifyReply
+  ): Promise<void> {
+    this.logger.info({ body: request.body }, 'HTTP container spawn request');
+
+    try {
+      const result = await this.containerSpawner.execute(request.body);
+      
+      reply.send({
+        success: true,
+        data: result
+      });
+
+    } catch (error) {
+      this.logger.error({ error }, 'Error spawning container via HTTP');
+      
+      reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle list active containers request
+   */
+  private async handleListContainers(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const spawner = this.containerSpawner.getSpawner();
+      const containers = await spawner.getActiveContainers();
+      
+      reply.send({
+        success: true,
+        data: {
+          activeContainers: containers.length,
+          containers
+        }
+      });
+
+    } catch (error) {
+      this.logger.error({ error }, 'Error listing containers');
+      
+      reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Handle Docker system info request
+   */
+  private async handleDockerInfo(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const spawner = this.containerSpawner.getSpawner();
+      const dockerInfo = await spawner.getSystemInfo();
+      
+      reply.send({
+        success: true,
+        data: dockerInfo
+      });
+
+    } catch (error) {
+      this.logger.error({ error }, 'Error getting Docker info');
+      
+      reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
    * Handle server errors
    */
   private async handleError(
@@ -591,6 +744,29 @@ export class MCPServer extends EventEmitter {
     this.claudeIntegration.on('error', (error, sessionId) => {
       console.error(`Claude integration error${sessionId ? ` for session ${sessionId}` : ''}:`, error);
       this.emit('error', error);
+    });
+
+    // Container spawner events
+    const spawner = this.containerSpawner.getSpawner();
+    spawner.on('container-created', (sessionId, containerId) => {
+      this.logger.info({ sessionId, containerId }, 'Container created');
+    });
+    
+    spawner.on('container-started', (sessionId, containerId) => {
+      this.logger.info({ sessionId, containerId }, 'Container started');
+    });
+    
+    spawner.on('container-stopped', (sessionId, containerId, exitCode) => {
+      this.logger.info({ sessionId, containerId, exitCode }, 'Container stopped');
+    });
+    
+    spawner.on('container-error', (sessionId, containerId, error) => {
+      this.logger.error({ sessionId, containerId, error }, 'Container error');
+    });
+    
+    spawner.on('execution-complete', (sessionId, result) => {
+      this.logger.info({ sessionId, result: { sessionId: result.sessionId, exitCode: result.exitCode, duration: result.duration } }, 'Container execution completed');
+      this.broadcastContainerResult(sessionId, result);
     });
 
     // Driver events (if connected)
@@ -620,6 +796,25 @@ export class MCPServer extends EventEmitter {
         });
         websocket.send(notification);
       }
+    }
+  }
+
+  /**
+   * Broadcast container execution result to all sessions
+   */
+  private broadcastContainerResult(sessionId: string, result: ContainerExecutionResult): void {
+    const websocket = this.websocketSessions.get(sessionId);
+    const session = this.sessions.get(sessionId);
+    
+    if (session && websocket) {
+      const notification = session.sendNotification('container_result', {
+        sessionId: result.sessionId,
+        containerId: result.containerId,
+        exitCode: result.exitCode,
+        duration: result.duration,
+        success: result.exitCode === 0
+      });
+      websocket.send(notification);
     }
   }
 
@@ -706,6 +901,9 @@ export class MCPServer extends EventEmitter {
       if (this.driver) {
         await this.driver.stop();
       }
+
+      // Cleanup container spawner
+      await this.containerSpawner.cleanup();
 
       // Close Fastify server
       await this.fastify.close();

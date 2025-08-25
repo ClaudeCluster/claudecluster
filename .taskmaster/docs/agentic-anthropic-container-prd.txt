@@ -1,0 +1,451 @@
+# ClaudeCluster Agentic Mode with Official Anthropic Containers - PRD
+
+## Executive Summary
+Implement true agentic mode for ClaudeCluster using the **official Anthropic Claude Code Docker container** as the foundation for dynamically spawned coding environments. This ensures compatibility, security, and alignment with Anthropic's best practices.
+
+## Official Container Foundation
+
+### Base: Anthropic Claude Code DevContainer
+```dockerfile
+# Source: https://github.com/anthropics/claude-code/blob/main/.devcontainer/Dockerfile
+FROM node:20
+
+# Key components from official Dockerfile:
+- Node.js 20 runtime
+- Claude Code installed via npm (@anthropic-ai/claude-code)
+- Non-root user (node) with sudo capabilities
+- Pre-configured development tools (git, zsh, vim, etc.)
+- Network utilities for secure communication
+- /workspace as primary working directory
+```
+
+## Container Architecture Transformation
+
+### 1. Extend Official Dockerfile for Agentic Mode
+
+#### Our Agentic Worker Dockerfile
+```dockerfile
+# Base from official Anthropic image
+FROM ghcr.io/anthropics/claude-code:latest
+
+# Or build from official Dockerfile
+ARG CLAUDE_CODE_VERSION=latest
+FROM node:20 as anthropic-base
+# ... (copy official Dockerfile steps)
+
+# === AGENTIC MODE EXTENSIONS ===
+
+# Add session management layer
+COPY scripts/agentic-session-manager.js /usr/local/bin/
+COPY scripts/repo-cloner.sh /usr/local/bin/
+COPY scripts/claude-wrapper.sh /usr/local/bin/
+
+# Session persistence and monitoring
+RUN npm install -g \
+    ws \
+    express \
+    @docker/docker-api \
+    pino
+
+# Agentic mode environment variables
+ENV AGENTIC_MODE=true
+ENV SESSION_TIMEOUT=3600
+ENV AUTO_CLEANUP=true
+ENV CLAUDE_SESSION_TYPE=agentic
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+    CMD node /usr/local/bin/health-check.js || exit 1
+
+# Agentic entrypoint that:
+# 1. Clones repository
+# 2. Authenticates Claude Code
+# 3. Starts session manager
+# 4. Maintains container lifecycle
+ENTRYPOINT ["/usr/local/bin/agentic-entrypoint.sh"]
+```
+
+### 2. Session Manager Integration
+
+#### Agentic Session Manager (`agentic-session-manager.js`)
+```javascript
+// Manages Claude Code lifecycle within official container
+class AgenticSessionManager {
+  constructor() {
+    this.claudeProcess = null;
+    this.sessionId = process.env.SESSION_ID;
+    this.repoUrl = process.env.REPO_URL;
+    this.workspace = '/workspace';
+  }
+
+  async initialize() {
+    // 1. Clone repository using official container's git
+    await this.cloneRepository();
+    
+    // 2. Authenticate Claude Code (using official npm package)
+    await this.authenticateClaude();
+    
+    // 3. Start Claude Code in session mode
+    await this.startClaudeSession();
+    
+    // 4. Setup WebSocket for command relay
+    await this.setupCommandRelay();
+  }
+
+  async cloneRepository() {
+    // Use git already installed in official container
+    const { execSync } = require('child_process');
+    execSync(`git clone ${this.repoUrl} ${this.workspace}/repo`, {
+      cwd: this.workspace,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    });
+  }
+
+  async authenticateClaude() {
+    // Use Claude Code from official npm installation
+    const claudePath = '/usr/local/lib/node_modules/@anthropic-ai/claude-code';
+    // Authentication using official Claude Code API
+  }
+
+  async startClaudeSession() {
+    // Spawn Claude Code process using official binary
+    const { spawn } = require('child_process');
+    this.claudeProcess = spawn('claude-code', ['--session', '--workspace', '/workspace/repo'], {
+      cwd: '/workspace/repo',
+      env: {
+        ...process.env,
+        CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
+        CLAUDE_SESSION_ID: this.sessionId
+      }
+    });
+  }
+}
+```
+
+### 3. Container Lifecycle Management
+
+#### Leveraging Official Container Features
+```typescript
+interface AgenticContainerConfig {
+  // Base from official devcontainer.json
+  image: 'ghcr.io/anthropics/claude-code:latest';
+  
+  // Extend with agentic features
+  environment: {
+    // Official Claude Code env vars
+    CLAUDE_CODE_VERSION: string;
+    TZ: string;
+    
+    // Agentic mode additions
+    SESSION_ID: string;
+    REPO_URL: string;
+    BRANCH: string;
+    CLAUDE_API_KEY: string;
+    WEBHOOK_URL: string;
+  };
+  
+  // Use official workspace structure
+  workspaceFolder: '/workspace';
+  
+  // Leverage official user setup
+  remoteUser: 'node';
+  
+  // Container resources
+  hostRequirements: {
+    cpus: 2;
+    memory: '4gb';
+    storage: '20gb';
+  };
+}
+```
+
+## Integration with ClaudeCluster
+
+### 1. Container Spawning Service
+
+```typescript
+class AnthropicContainerOrchestrator {
+  private docker: Docker;
+  private registry = 'ghcr.io/anthropics';
+  
+  async spawnAgenticContainer(session: SessionConfig): Promise<Container> {
+    // Pull latest official Claude Code image
+    await this.docker.pull(`${this.registry}/claude-code:latest`);
+    
+    // Create container with official + agentic configuration
+    const container = await this.docker.createContainer({
+      Image: `${this.registry}/claude-code:agentic`,
+      
+      // Environment from official + our extensions
+      Env: [
+        // Official vars
+        'DEVCONTAINER=true',
+        'TZ=UTC',
+        'NPM_CONFIG_PREFIX=/usr/local',
+        
+        // Agentic session vars
+        `SESSION_ID=${session.id}`,
+        `REPO_URL=${session.repoUrl}`,
+        `BRANCH=${session.branch}`,
+        `CLAUDE_API_KEY=${session.claudeApiKey}`,
+        `CALLBACK_URL=${this.getCallbackUrl(session.id)}`
+      ],
+      
+      // Use official workspace structure
+      WorkingDir: '/workspace',
+      User: 'node',
+      
+      // Resource limits
+      HostConfig: {
+        Memory: 4 * 1024 * 1024 * 1024, // 4GB
+        CpuShares: 2048,
+        AutoRemove: true,
+        
+        // Network isolation
+        NetworkMode: this.createSessionNetwork(session.id),
+        
+        // Security from official container
+        SecurityOpt: ['no-new-privileges'],
+        ReadonlyRootfs: false, // Need write for repo operations
+      },
+      
+      // Health check using official Claude Code
+      Healthcheck: {
+        Test: ['CMD', 'claude-code', '--version'],
+        Interval: 30000000000, // 30s in nanoseconds
+        Timeout: 3000000000,   // 3s in nanoseconds
+        Retries: 3,
+        StartPeriod: 10000000000 // 10s in nanoseconds
+      }
+    });
+    
+    await container.start();
+    return container;
+  }
+}
+```
+
+### 2. Official Container Advantages
+
+#### Built-in Features We Leverage
+1. **Pre-installed Claude Code** - No manual installation needed
+2. **Development Tools** - git, vim, zsh already configured
+3. **Security Hardening** - Non-root user, proper permissions
+4. **Network Utilities** - iptables, routing for secure communication
+5. **Node.js Environment** - Ready for JavaScript/TypeScript execution
+
+#### Extensions for Agentic Mode
+1. **Session Management** - Track and maintain Claude sessions
+2. **Repository Integration** - Auto-clone and setup
+3. **WebSocket Relay** - Real-time command streaming
+4. **Lifecycle Hooks** - Container cleanup on session end
+5. **Monitoring** - Health checks and metrics
+
+## Implementation Phases Using Official Container
+
+### Phase 1: Container Registry Setup (Week 1)
+- [ ] Fork official Anthropic Claude Code repo
+- [ ] Set up GitHub Container Registry
+- [ ] Build extended agentic image from official Dockerfile
+- [ ] Publish to registry with versioning
+
+### Phase 2: Session Management Layer (Week 2)
+- [ ] Implement session manager using official Claude Code npm package
+- [ ] Add repository cloning with official git installation
+- [ ] Create WebSocket relay for official Claude Code process
+- [ ] Add health monitoring using official endpoints
+
+### Phase 3: Orchestrator Integration (Week 3)
+- [ ] Update orchestrator to pull official images
+- [ ] Configure container spawning with official settings
+- [ ] Implement network isolation per official security practices
+- [ ] Add resource limits compatible with official requirements
+
+### Phase 4: Testing with Official Container (Week 4)
+- [ ] Test Claude Code functionality in official container
+- [ ] Verify repository operations with official git
+- [ ] Validate session persistence with official user setup
+- [ ] Performance testing with official resource limits
+
+## Security Alignment with Official Container
+
+### Leveraging Official Security Features
+```yaml
+Security Features from Official Container:
+  User Management:
+    - Non-root 'node' user
+    - Controlled sudo access
+    - Proper file permissions
+  
+  Network Security:
+    - Firewall initialization script
+    - iptables/ipset configuration
+    - Network isolation capabilities
+  
+  Package Security:
+    - Official npm registry for Claude Code
+    - Verified package signatures
+    - Regular security updates
+
+Our Additional Security Layers:
+  Session Isolation:
+    - Unique network per session
+    - No cross-session communication
+    - Automatic cleanup on termination
+  
+  Secret Management:
+    - Claude API keys via environment
+    - Repository tokens via secure injection
+    - No persistent secret storage
+```
+
+## Cost Optimization with Official Containers
+
+### Image Layer Caching
+```dockerfile
+# Leverage official image layers
+FROM ghcr.io/anthropics/claude-code:latest as cached-base
+
+# Only add our thin agentic layer
+COPY --chown=node:node scripts/ /usr/local/bin/
+RUN npm install --production agentic-deps
+
+# Result: 90% layer reuse from official image
+```
+
+### Pre-warmed Container Pool
+```typescript
+class ContainerPool {
+  private warmPool: Container[] = [];
+  
+  async prewarmContainers() {
+    // Pull official image once
+    await this.docker.pull('ghcr.io/anthropics/claude-code:latest');
+    
+    // Create pool of ready containers
+    for (let i = 0; i < this.poolSize; i++) {
+      const container = await this.createWarmContainer();
+      this.warmPool.push(container);
+    }
+  }
+  
+  async getContainer(session: SessionConfig): Promise<Container> {
+    // Use pre-warmed container with official image
+    const container = this.warmPool.pop() || await this.spawnAgenticContainer(session);
+    
+    // Inject session-specific config
+    await this.configureForSession(container, session);
+    
+    return container;
+  }
+}
+```
+
+## Deployment Configurations
+
+### Docker Compose with Official Image
+```yaml
+version: '3.8'
+
+services:
+  agentic-orchestrator:
+    image: claudecluster/orchestrator:latest
+    environment:
+      - CONTAINER_IMAGE=ghcr.io/anthropics/claude-code:agentic
+      - CONTAINER_REGISTRY=ghcr.io
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    
+  # Pre-pulled official image for faster spawning
+  claude-code-cache:
+    image: ghcr.io/anthropics/claude-code:latest
+    command: echo "Image cached"
+    profiles:
+      - cache
+```
+
+### Kubernetes with Official Image
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentic-config
+data:
+  container-image: "ghcr.io/anthropics/claude-code:agentic"
+  base-image: "ghcr.io/anthropics/claude-code:latest"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: claude-session-{{ .SessionID }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: claude-code
+        image: ghcr.io/anthropics/claude-code:agentic
+        imagePullPolicy: Always
+        env:
+        - name: SESSION_ID
+          value: "{{ .SessionID }}"
+        - name: REPO_URL
+          value: "{{ .RepoURL }}"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+```
+
+## Benefits of Using Official Container
+
+### 1. **Compatibility Guaranteed**
+- Always compatible with latest Claude Code
+- Follows Anthropic's best practices
+- Automatic updates with official releases
+
+### 2. **Security by Default**
+- Anthropic's security hardening included
+- Regular security patches
+- Trusted base image
+
+### 3. **Reduced Maintenance**
+- No need to maintain base Claude Code installation
+- Automatic dependency updates
+- Official support and documentation
+
+### 4. **Performance Optimized**
+- Optimized by Anthropic team
+- Efficient layer caching
+- Minimal image size
+
+### 5. **Developer Experience**
+- Familiar environment for Claude Code users
+- Pre-configured development tools
+- Standard workspace structure
+
+## Success Criteria
+
+### Metrics
+- Container spawn time with official image: < 5 seconds (cached)
+- Layer reuse from official image: > 90%
+- Security vulnerabilities: 0 (inherit official fixes)
+- Compatibility issues: 0 (using official Claude Code)
+
+## Conclusion
+
+By building on the official Anthropic Claude Code container, we ensure our agentic mode implementation is:
+- **Compatible** - Works with official Claude Code
+- **Secure** - Inherits Anthropic's security practices
+- **Maintainable** - Minimal custom code on top of official base
+- **Performant** - Leverages optimized official layers
+- **Supported** - Benefits from official updates and fixes
+
+This approach gives us the best of both worlds: Anthropic's production-ready Claude Code container with our agentic session management layer.
+
+---
+Document Version: 3.0 (Official Anthropic Container Integration)
+Last Updated: 2024-08-25
+Status: Draft

@@ -2,11 +2,25 @@
  * @fileoverview Orchestrator for coordinating task execution across workers
  */
 
-import { EventEmitter } from 'eventemitter2';
+import { EventEmitter2 as EventEmitter } from 'eventemitter2';
 import axios, { type AxiosInstance } from 'axios';
 import type { Task, TaskResult, Worker, Driver, TaskProgress } from '@claudecluster/core';
 import { TaskStatus, WorkerStatus, DriverStatus } from '@claudecluster/core';
 import { TaskScheduler, type SchedulerConfig, type TaskExecutionPlan } from '../scheduler/index.js';
+import { ExecutionMode } from '@claudecluster/worker';
+
+/**
+ * Session options for container mode execution
+ */
+export interface SessionOptions {
+  readonly repoUrl?: string;
+  readonly timeout?: number; // seconds
+  readonly resourceLimits?: {
+    memory?: number;
+    cpu?: number;
+  };
+  readonly environment?: Record<string, string>;
+}
 
 /**
  * Orchestrator configuration
@@ -67,6 +81,9 @@ export interface OrchestratorEvents {
   'orchestration-started': () => void;
   'orchestration-stopped': () => void;
   'stats-updated': (stats: OrchestrationStats) => void;
+  'session-created': (sessionId: string, workerId: string) => void;
+  'session-expired': (sessionId: string) => void;
+  'session-terminated': (sessionId: string) => void;
 }
 
 /**
@@ -84,6 +101,9 @@ export interface OrchestrationStats {
   readonly successRate: number;
   readonly throughput: number;
   readonly uptime: number;
+  readonly activeSessions: number;
+  readonly totalSessionsCreated: number;
+  readonly expiredSessions: number;
 }
 
 /**
@@ -93,6 +113,27 @@ interface DecomposedTask {
   readonly subtasks: Task[];
   readonly mergeStrategy: 'concat' | 'merge' | 'reduce' | 'custom';
   readonly customMerger?: (results: TaskResult[]) => TaskResult;
+}
+
+/**
+ * Session information for container mode execution
+ */
+export interface Session {
+  readonly id: string;
+  readonly workerId: string;
+  readonly createdAt: number;
+  readonly expiresAt: number;
+  lastActivity: number;
+  readonly options: SessionOptions;
+}
+
+/**
+ * Session creation response
+ */
+export interface SessionCreationResponse {
+  readonly sessionId: string;
+  readonly workerId: string;
+  readonly endpoint: string;
 }
 
 /**
@@ -110,12 +151,15 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
   private readonly executionContexts = new Map<string, TaskExecutionContext>();
   private readonly taskResults = new Map<string, TaskResult>();
   private readonly taskErrors = new Map<string, Error>();
+  private readonly sessions = new Map<string, Session>();
   
   private _status: DriverStatus = DriverStatus.INITIALIZING;
   private healthCheckInterval?: NodeJS.Timeout;
   private statsInterval?: NodeJS.Timeout;
   private startTime: Date;
   private stats: OrchestrationStats;
+  private totalSessionsCreated = 0;
+  private expiredSessionsCount = 0;
 
   constructor(config: Partial<OrchestratorConfig> = {}) {
     super();
@@ -151,7 +195,10 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
       averageTaskDuration: 0,
       successRate: 0,
       throughput: 0,
-      uptime: 0
+      uptime: 0,
+      activeSessions: 0,
+      totalSessionsCreated: 0,
+      expiredSessions: 0
     };
   }
 
@@ -188,6 +235,7 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
         this.performWorkerHealthCheck().catch(error => {
           console.error('Health check failed:', error);
         });
+        this.cleanupExpiredSessions();
       }, this.config.workerHealthCheckInterval);
       
       // Start stats updates
@@ -234,6 +282,15 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
           await this.cancelWorkerTask(context.workerId, taskId);
         } catch (error) {
           console.error(`Failed to cancel task ${taskId}:`, error);
+        }
+      }
+      
+      // Terminate all active sessions
+      for (const [sessionId, session] of this.sessions) {
+        try {
+          await this.terminateSession(sessionId);
+        } catch (error) {
+          console.error(`Failed to terminate session ${sessionId}:`, error);
         }
       }
       
@@ -287,6 +344,15 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
     }
 
     try {
+      // Check if task has a session ID - execute in session mode
+      if (task.sessionId && this.sessions.has(task.sessionId)) {
+        const result = await this.executeInSession(task);
+        this.taskResults.set(task.id, result);
+        this.emit('task-completed', task.id, result);
+        this.updateStats();
+        return;
+      }
+
       // Task decomposition (if enabled and applicable)
       if (this.config.enableTaskDecomposition && this.shouldDecomposeTask(task)) {
         const decomposed = await this.decomposeTask(task);
@@ -299,7 +365,7 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
         // Set up result merging
         this.setupResultMerging(task, decomposed);
       } else {
-        // Submit task directly
+        // Submit task directly to scheduler
         await this.scheduler.submitTask(task);
       }
       
@@ -384,6 +450,266 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
       currentStep: 'Executing...',
       estimatedTimeRemaining: this.estimateRemainingTime(context)
     };
+  }
+
+  /**
+   * Create a new session for container mode execution
+   */
+  async createSession(options: SessionOptions = {}): Promise<string> {
+    // Select worker for container mode
+    const worker = this.selectWorkerForMode(ExecutionMode.CONTAINER_AGENTIC);
+    
+    // Create session on worker
+    const httpClient = axios.create({
+      baseURL: worker.endpoint,
+      timeout: this.config.taskTimeout,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    try {
+      const response = await httpClient.post('/sessions', {
+        options
+      });
+      
+      if (!response.data || !response.data.sessionId) {
+        throw new Error('Invalid session creation response');
+      }
+      
+      const sessionId = response.data.sessionId;
+      const now = Date.now();
+      const timeout = (options.timeout || 3600) * 1000; // Default 1 hour
+      
+      // Store session information
+      const session: Session = {
+        id: sessionId,
+        workerId: worker.id,
+        createdAt: now,
+        expiresAt: now + timeout,
+        lastActivity: now,
+        options
+      };
+      
+      this.sessions.set(sessionId, session);
+      this.totalSessionsCreated++;
+      
+      this.emit('session-created', sessionId, worker.id);
+      this.updateStats();
+      
+      return sessionId;
+      
+    } catch (error) {
+      throw new Error(`Failed to create session on worker ${worker.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Execute a task in an existing session
+   */
+  async executeInSession(task: Task): Promise<TaskResult> {
+    const sessionId = task.sessionId;
+    if (!sessionId) {
+      throw new Error('Task does not have a session ID');
+    }
+    
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    
+    // Check if session has expired
+    const now = Date.now();
+    if (session.expiresAt < now) {
+      await this.cleanupSession(sessionId);
+      throw new Error(`Session ${sessionId} has expired`);
+    }
+    
+    // Update last activity
+    session.lastActivity = now;
+    
+    // Get worker for session
+    const workers = this.scheduler.getRegisteredWorkers();
+    const worker = workers.find(w => w.id === session.workerId);
+    if (!worker) {
+      throw new Error(`Worker ${session.workerId} for session ${sessionId} not found`);
+    }
+    
+    // Create HTTP client for worker
+    const httpClient = axios.create({
+      baseURL: worker.endpoint,
+      timeout: this.config.taskTimeout,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    try {
+      const response = await httpClient.post(`/sessions/${sessionId}/execute`, {
+        task,
+        options: {
+          timeout: this.config.taskTimeout
+        }
+      });
+      
+      const result: TaskResult = {
+        taskId: task.id,
+        status: TaskStatus.COMPLETED,
+        output: response.data.output || '',
+        artifacts: response.data.artifacts || [],
+        startTime: new Date(response.data.startTime),
+        endTime: new Date(response.data.endTime || Date.now()),
+        duration: response.data.duration || 0,
+        metadata: response.data.metadata || {}
+      };
+      
+      return result;
+      
+    } catch (error) {
+      throw new Error(`Failed to execute task ${task.id} in session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Terminate a session
+   */
+  async terminateSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return; // Session already terminated or doesn't exist
+    }
+    
+    // Get worker for session
+    const workers = this.scheduler.getRegisteredWorkers();
+    const worker = workers.find(w => w.id === session.workerId);
+    
+    if (worker) {
+      try {
+        const httpClient = axios.create({
+          baseURL: worker.endpoint,
+          timeout: 5000
+        });
+        
+        await httpClient.delete(`/sessions/${sessionId}`);
+      } catch (error) {
+        console.error(`Failed to terminate session ${sessionId} on worker:`, error);
+      }
+    }
+    
+    // Remove from local tracking
+    this.sessions.delete(sessionId);
+    this.emit('session-terminated', sessionId);
+    this.updateStats();
+  }
+
+  /**
+   * Get active session information
+   */
+  getSession(sessionId: string): Session | undefined {
+    return this.sessions.get(sessionId);
+  }
+
+  /**
+   * Get all active sessions
+   */
+  getActiveSessions(): Session[] {
+    return Array.from(this.sessions.values());
+  }
+
+  /**
+   * Select a worker that supports the specified execution mode
+   */
+  private selectWorkerForMode(mode: ExecutionMode): Worker {
+    const workers = this.scheduler.getRegisteredWorkers();
+    
+    // Find workers that support the requested mode
+    const compatibleWorkers = workers.filter(worker => {
+      const capabilities = worker.capabilities;
+      
+      // Check if worker supports container execution for CONTAINER_AGENTIC mode
+      if (mode === ExecutionMode.CONTAINER_AGENTIC) {
+        return capabilities.supportsContainerExecution || 
+               (capabilities.executionModes && capabilities.executionModes.includes('container_agentic')) ||
+               (worker.config.featureFlags && worker.config.featureFlags.allowModeOverride);
+      }
+      
+      // Check if worker supports process pool for PROCESS_POOL mode
+      if (mode === ExecutionMode.PROCESS_POOL) {
+        return !capabilities.executionModes || 
+               capabilities.executionModes.includes('process_pool') ||
+               capabilities.executionModes.length === 0; // Default mode
+      }
+      
+      return false;
+    });
+    
+    if (compatibleWorkers.length === 0) {
+      throw new Error(`No workers available for execution mode: ${mode}`);
+    }
+    
+    // Select the least loaded compatible worker
+    return this.selectLeastLoadedWorker(compatibleWorkers);
+  }
+
+  /**
+   * Select the least loaded worker from a list of workers
+   */
+  private selectLeastLoadedWorker(workers: Worker[]): Worker {
+    if (workers.length === 0) {
+      throw new Error('No workers available for selection');
+    }
+    
+    // Sort by current task count (ascending) and then by response time
+    return workers.sort((a, b) => {
+      // First, sort by current task count
+      const aTaskCount = a.currentTasks.length;
+      const bTaskCount = b.currentTasks.length;
+      
+      if (aTaskCount !== bTaskCount) {
+        return aTaskCount - bTaskCount;
+      }
+      
+      // If task count is equal, sort by health response time
+      return a.health.responseTime - b.health.responseTime;
+    })[0];
+  }
+
+  /**
+   * Clean up expired sessions
+   */
+  private cleanupExpiredSessions(): void {
+    const now = Date.now();
+    const expiredSessions: string[] = [];
+    
+    for (const [sessionId, session] of this.sessions) {
+      if (session.expiresAt < now) {
+        expiredSessions.push(sessionId);
+      }
+    }
+    
+    for (const sessionId of expiredSessions) {
+      this.cleanupSession(sessionId).catch(error => {
+        console.error(`Failed to cleanup expired session ${sessionId}:`, error);
+      });
+    }
+  }
+
+  /**
+   * Clean up a specific session
+   */
+  private async cleanupSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return;
+    }
+    
+    // Terminate session on worker
+    await this.terminateSession(sessionId);
+    
+    // Increment expired sessions counter
+    this.expiredSessionsCount++;
+    
+    this.emit('session-expired', sessionId);
   }
 
   /**
@@ -769,7 +1095,10 @@ export class TaskOrchestrator extends EventEmitter<OrchestratorEvents> implement
         ? (schedulerStats.completedTasks / schedulerStats.totalTasks) * 100 
         : 0,
       throughput: schedulerStats.throughput,
-      uptime: Date.now() - this.startTime.getTime()
+      uptime: Date.now() - this.startTime.getTime(),
+      activeSessions: this.sessions.size,
+      totalSessionsCreated: this.totalSessionsCreated,
+      expiredSessions: this.expiredSessionsCount
     };
     
     this.emit('stats-updated', this.stats);

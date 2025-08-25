@@ -1,0 +1,63 @@
+# Dockerfile for ClaudeCluster Agentic Mode Container
+# Based on official Anthropic Claude Code image with custom wrapper
+
+FROM ghcr.io/anthropics/claude-code:latest
+
+LABEL maintainer="ClaudeCluster Contributors"
+LABEL description="ClaudeCluster agentic execution container with wrapper script"
+LABEL version="1.0.0"
+
+# Set environment variables
+ENV WORKSPACE_DIR=/workspace
+ENV LOG_LEVEL=INFO
+ENV TIMEOUT=300
+ENV MAX_OUTPUT_SIZE=10485760
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Create necessary directories
+RUN mkdir -p /workspace \
+    && mkdir -p /tmp/claudecluster \
+    && mkdir -p /usr/local/bin \
+    && chmod 755 /workspace /tmp/claudecluster
+
+# Install additional tools needed for the wrapper
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    jq \
+    procps \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy wrapper script
+COPY scripts/claude-prototype-wrapper.sh /usr/local/bin/claude-prototype-wrapper.sh
+
+# Make wrapper script executable
+RUN chmod +x /usr/local/bin/claude-prototype-wrapper.sh
+
+# Create symlink for easier access
+RUN ln -s /usr/local/bin/claude-prototype-wrapper.sh /usr/local/bin/wrapper
+
+# Set up non-root user for security
+RUN groupadd -r claudecluster && useradd -r -g claudecluster -s /bin/bash claudecluster \
+    && chown -R claudecluster:claudecluster /workspace /tmp/claudecluster
+
+# Switch to non-root user
+USER claudecluster
+
+# Set working directory
+WORKDIR /workspace
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/claude-prototype-wrapper.sh --health-check
+
+# Default command runs the wrapper script
+CMD ["/usr/local/bin/claude-prototype-wrapper.sh"]
+
+# Metadata
+LABEL org.opencontainers.image.title="ClaudeCluster Agentic Container"
+LABEL org.opencontainers.image.description="Container for executing Claude Code tasks in agentic mode"
+LABEL org.opencontainers.image.vendor="ClaudeCluster"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/claudecluster/claudecluster"

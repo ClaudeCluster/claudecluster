@@ -1,0 +1,739 @@
+# ClaudeCluster Agentic Mode TRANSFORMATION - Product Requirements Document
+
+## Executive Summary
+Transform the existing ClaudeCluster implementation from static container/process pool architecture to dynamic agentic mode by **evolving current components** rather than creating parallel systems. This ensures zero code duplication, maintains backward compatibility, and provides a clean migration path.
+
+## Transformation Philosophy
+
+### Core Principle: Evolution, Not Revolution
+- **REUSE** existing components wherever possible
+- **REFACTOR** current implementations to support both modes
+- **EXTEND** interfaces rather than replacing them
+- **MAINTAIN** single codebase with configurable behavior
+- **AVOID** duplicate implementations and versioning complexity
+
+## Current State Analysis
+
+### Existing Components to Transform
+```typescript
+// CURRENT: Static process pool in worker
+packages/worker/
+  ├── src/process/index.ts      // ClaudeProcessPool - TRANSFORM to support containers
+  ├── src/engine/index.ts       // TaskExecutionEngine - EXTEND for container mode
+  ├── src/server/index.ts       // WorkerServer - ADAPT for both modes
+  └── src/worker.ts             // Main worker - ADD mode switching
+
+// CURRENT: Driver orchestration
+packages/driver/
+  ├── src/orchestrator/index.ts // Orchestrator - EXTEND for container spawning
+  ├── src/scheduler/index.ts    // TaskScheduler - ADAPT for session-based scheduling
+  └── src/server/index.ts       // DriverServer - ADD container management endpoints
+```
+
+## Transformation Strategy
+
+### 1. Unified Execution Interface
+
+#### Transform `ClaudeProcessPool` → `ExecutionProvider`
+```typescript
+// NEW: Abstract interface supporting both modes
+interface ExecutionProvider {
+  getExecutor(task: Task, mode: ExecutionMode): Promise<Executor>;
+  release(executor: Executor): Promise<void>;
+  cleanup(): Promise<void>;
+}
+
+// Implementations sharing common base
+class ProcessPoolProvider extends BaseProvider implements ExecutionProvider {
+  // Current process pool logic
+}
+
+class ContainerProvider extends BaseProvider implements ExecutionProvider {
+  // New container spawning logic
+}
+
+// Mode determined by configuration
+enum ExecutionMode {
+  PROCESS_POOL = 'process_pool',  // Current behavior
+  CONTAINER_AGENTIC = 'container_agentic'  // New behavior
+}
+```
+
+### 2. Component Transformation Map
+
+#### Phase 1: Core Abstraction Layer
+**Transform existing interfaces to support both modes:**
+
+| Current Component | Transformation | Shared Code |
+|------------------|----------------|-------------|
+| `ClaudeCodeProcess` | → `BaseExecutor` | Command execution, output streaming |
+| `ClaudeProcessPool` | → `ExecutionProvider` | Resource management, health checks |
+| `TaskExecutionEngine` | → Add `ExecutionMode` | Task lifecycle, progress tracking |
+| `WorkerServer` | → Add mode routing | API endpoints, metrics, health |
+
+#### Phase 2: Extend Without Breaking
+**Add container support alongside existing process pool:**
+
+```typescript
+// packages/worker/src/execution/provider.ts
+export class UnifiedExecutionProvider implements ExecutionProvider {
+  private processPool?: ProcessPoolProvider;
+  private containerProvider?: ContainerProvider;
+  
+  constructor(private config: WorkerConfig) {
+    // Initialize based on mode
+    if (config.executionMode === ExecutionMode.PROCESS_POOL) {
+      this.processPool = new ProcessPoolProvider(config);
+    } else {
+      this.containerProvider = new ContainerProvider(config);
+    }
+  }
+  
+  async getExecutor(task: Task): Promise<Executor> {
+    // Route to appropriate provider
+    return this.config.executionMode === ExecutionMode.PROCESS_POOL
+      ? this.processPool!.getProcess()
+      : this.containerProvider!.spawnContainer(task);
+  }
+}
+```
+
+### 3. Configuration-Driven Behavior
+
+#### Single Configuration Schema
+```typescript
+interface WorkerConfig {
+  // Existing config
+  port: number;
+  host: string;
+  maxConcurrentTasks: number;
+  
+  // Mode selection
+  executionMode: ExecutionMode;
+  
+  // Process pool config (when mode = PROCESS_POOL)
+  processPool?: {
+    maxProcesses: number;
+    processTimeout: number;
+  };
+  
+  // Container config (when mode = CONTAINER_AGENTIC)
+  container?: {
+    orchestrator: 'docker' | 'kubernetes' | 'ecs';
+    image: string;
+    registry: string;
+    resourceLimits: ResourceLimits;
+  };
+}
+```
+
+### 4. Backward Compatibility Strategy
+
+#### Maintain Existing APIs
+```typescript
+// packages/worker/src/server/index.ts
+class WorkerServer {
+  // Existing endpoints work for both modes
+  async handleTaskSubmission(request: FastifyRequest) {
+    // Same API, different execution backend
+    const executor = await this.executionProvider.getExecutor(task);
+    const result = await executor.execute(task);
+    return result;
+  }
+  
+  // New endpoint only for container mode
+  async handleSessionCreate(request: FastifyRequest) {
+    if (this.config.executionMode !== ExecutionMode.CONTAINER_AGENTIC) {
+      throw new Error('Session mode requires container execution');
+    }
+    // Container-specific session logic
+  }
+}
+```
+
+## Implementation Transformation Phases
+
+### Phase 0: MCP Container Prototype (Week 0 - Immediate)
+**Proof of concept for MCP-driven container orchestration:**
+
+This prototype demonstrates the core agentic mode concept where your primary Claude Code instance uses the MCP server to spawn and control containerized Claude Code instances.
+
+#### Prototype Goals
+- Validate MCP → Docker container spawning workflow
+- Test communication between primary and containerized Claude
+- Demonstrate session isolation and lifecycle management
+- Provide immediate tangible results for stakeholder buy-in
+
+#### Architecture
+```
+Primary Claude Code (with MCP)
+        ↓
+   MCP Server Tool
+        ↓
+  Docker API Client
+        ↓
+  Spawn Container
+        ↓
+Containerized Claude Code
+        ↓
+   Execute Task
+        ↓
+  Return Results
+```
+
+#### Implementation Components
+
+##### 1. MCP Server Tool Extension
+```typescript
+// packages/mcp/src/tools/container-spawner.ts
+export class ContainerSpawnerTool implements MCPTool {
+  name = 'spawn_claude_container';
+  description = 'Spawn a Claude Code container for task execution';
+  
+  async execute(params: {
+    task: string;
+    repoUrl?: string;
+    sessionTimeout?: number;
+  }): Promise<{
+    sessionId: string;
+    containerId: string;
+    result: string;
+  }> {
+    // 1. Create unique session ID
+    const sessionId = crypto.randomUUID();
+    
+    // 2. Spawn Docker container
+    const container = await this.spawnContainer({
+      sessionId,
+      task: params.task,
+      repoUrl: params.repoUrl
+    });
+    
+    // 3. Send task to containerized Claude
+    const result = await this.executeInContainer(container, params.task);
+    
+    // 4. Return results to primary Claude
+    return {
+      sessionId,
+      containerId: container.id,
+      result
+    };
+  }
+  
+  private async spawnContainer(config: SessionConfig) {
+    const docker = new Docker();
+    
+    // Use official Anthropic image
+    const container = await docker.createContainer({
+      Image: 'ghcr.io/anthropics/claude-code:latest',
+      Env: [
+        `SESSION_ID=${config.sessionId}`,
+        `TASK=${config.task}`,
+        `REPO_URL=${config.repoUrl || ''}`,
+        `CLAUDE_API_KEY=${process.env.CLAUDE_API_KEY}`
+      ],
+      HostConfig: {
+        AutoRemove: true,
+        Memory: 2 * 1024 * 1024 * 1024, // 2GB
+        NetworkMode: 'bridge'
+      },
+      Cmd: ['/usr/local/bin/claude-prototype-wrapper.sh']
+    });
+    
+    await container.start();
+    return container;
+  }
+  
+  private async executeInContainer(container: Container, task: string) {
+    // Create exec instance
+    const exec = await container.exec({
+      Cmd: ['claude-code', '--execute', task],
+      AttachStdout: true,
+      AttachStderr: true
+    });
+    
+    // Capture output
+    const stream = await exec.start();
+    const output = await this.streamToString(stream);
+    
+    // Clean up container
+    await container.stop();
+    
+    return output;
+  }
+}
+```
+
+##### 2. Wrapper Script for Container
+```bash
+#!/bin/bash
+# claude-prototype-wrapper.sh
+# This runs inside the container
+
+# Clone repository if provided
+if [ ! -z "$REPO_URL" ]; then
+  git clone "$REPO_URL" /workspace/repo
+  cd /workspace/repo
+fi
+
+# Authenticate Claude Code
+export CLAUDE_API_KEY="$CLAUDE_API_KEY"
+
+# Execute task with Claude Code
+claude-code --non-interactive <<EOF
+$TASK
+EOF
+
+# Return results
+echo "Task completed for session: $SESSION_ID"
+```
+
+##### 3. MCP Server Configuration
+```typescript
+// packages/mcp/src/server.ts
+export class MCPServer {
+  private tools: Map<string, MCPTool>;
+  
+  constructor() {
+    // Register prototype tool
+    this.tools.set('spawn_claude_container', new ContainerSpawnerTool());
+  }
+  
+  async handleToolCall(toolName: string, params: any) {
+    const tool = this.tools.get(toolName);
+    if (!tool) {
+      throw new Error(`Unknown tool: ${toolName}`);
+    }
+    
+    // Execute and return results
+    return await tool.execute(params);
+  }
+}
+```
+
+##### 4. Docker Compose for Testing
+```yaml
+# docker-compose.prototype.yml
+version: '3.8'
+
+services:
+  mcp-server:
+    build: ./packages/mcp
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ENABLE_CONTAINER_SPAWNING=true
+    
+  # Pre-pull official image for faster spawning
+  claude-code-cache:
+    image: ghcr.io/anthropics/claude-code:latest
+    command: echo "Image cached"
+    profiles:
+      - cache
+```
+
+#### Testing Workflow
+
+1. **Start MCP Server with Container Support**
+```bash
+docker-compose -f docker-compose.prototype.yml up
+```
+
+2. **From Primary Claude Code, Use MCP Tool**
+```typescript
+// In your primary Claude Code session
+const result = await mcp.callTool('spawn_claude_container', {
+  task: 'Write a Python function to calculate fibonacci',
+  repoUrl: 'https://github.com/user/test-repo',
+  sessionTimeout: 300
+});
+
+console.log('Container result:', result);
+```
+
+3. **Observe Container Lifecycle**
+- Container spawns with unique session ID
+- Claude Code executes task inside container
+- Results stream back to primary Claude
+- Container auto-removes after completion
+
+#### Success Criteria for Prototype
+- [ ] Container spawns in < 10 seconds
+- [ ] Task executes successfully in container
+- [ ] Results return to primary Claude
+- [ ] Container cleans up automatically
+- [ ] Multiple concurrent containers work
+
+#### Learnings to Apply
+This prototype will validate:
+1. Docker API integration patterns
+2. Communication protocols between Claude instances
+3. Session management requirements
+4. Performance characteristics
+5. Security isolation effectiveness
+
+### Phase 1: Abstraction Layer (Week 1)
+**Transform existing code to use abstractions:**
+- [ ] Extract `Executor` interface from `ClaudeCodeProcess`
+- [ ] Create `ExecutionProvider` interface
+- [ ] Refactor `TaskExecutionEngine` to use provider abstraction
+- [ ] Update tests to work with abstractions
+
+### Phase 2: Container Provider (Week 2)
+**Add container support without removing process pool:**
+- [ ] Implement `ContainerProvider` class
+- [ ] Add Docker SDK integration to existing project
+- [ ] Create `ContainerExecutor` implementing `Executor`
+- [ ] Share streaming/monitoring code between executors
+
+### Phase 3: Mode Switching (Week 3)
+**Enable runtime mode selection:**
+- [ ] Add execution mode to configuration
+- [ ] Implement `UnifiedExecutionProvider`
+- [ ] Update WorkerServer to handle both modes
+- [ ] Add mode-specific health checks
+
+### Phase 4: Session Management (Week 4)
+**Extend existing APIs for session support:**
+- [ ] Add session endpoints to existing API
+- [ ] Extend task model with session metadata
+- [ ] Reuse WebSocket infrastructure for streaming
+- [ ] Share authentication logic between modes
+
+### Phase 5: Orchestrator Evolution (Week 5)
+**Transform driver to support container orchestration:**
+- [ ] Extend `Orchestrator` class with container awareness
+- [ ] Add container lifecycle management
+- [ ] Reuse existing task scheduling logic
+- [ ] Share monitoring and metrics collection
+
+## Code Reuse Matrix
+
+### Components Shared Between Modes
+
+| Component | Process Mode | Container Mode | Shared Logic |
+|-----------|--------------|----------------|--------------|
+| Task Execution | ✓ | ✓ | Task lifecycle, progress tracking |
+| Output Streaming | ✓ | ✓ | WebSocket/SSE infrastructure |
+| Health Monitoring | ✓ | ✓ | Health check endpoints, metrics |
+| API Layer | ✓ | ✓ | REST endpoints, validation |
+| Authentication | ✓ | ✓ | API key validation, rate limiting |
+| Logging | ✓ | ✓ | Structured logging with Pino |
+| Error Handling | ✓ | ✓ | Error classes, recovery logic |
+| Task Scheduling | ✓ | ✓ | Dependency resolution, queuing |
+
+### New Components (Container Mode Only)
+
+| Component | Purpose | Integration Point |
+|-----------|---------|-------------------|
+| Container Orchestrator | Spawn/manage containers | ExecutionProvider interface |
+| Session Manager | Track container sessions | Extends task metadata |
+| Image Builder | Create worker images | CI/CD pipeline |
+| Container Registry | Store/serve images | Deployment configuration |
+
+## Migration Strategy
+
+### Gradual Rollout Plan
+```yaml
+Stage 1: Development
+  - Mode: PROCESS_POOL (default)
+  - Enable container mode in dev environment
+  - A/B test with select developers
+
+Stage 2: Staging
+  - Mode: Dual (both available)
+  - Route by configuration flag
+  - Performance comparison
+
+Stage 3: Production
+  - Mode: CONTAINER_AGENTIC (default)
+  - Process pool as fallback
+  - Monitor and optimize
+
+Stage 4: Deprecation
+  - Mode: CONTAINER_AGENTIC (only)
+  - Remove process pool code
+  - Final cleanup
+```
+
+### Feature Flags
+```typescript
+interface FeatureFlags {
+  enableContainerMode: boolean;
+  defaultExecutionMode: ExecutionMode;
+  allowModeOverride: boolean;
+  containerProviders: string[]; // ['docker', 'k8s', 'ecs']
+}
+```
+
+## Testing Strategy
+
+### Unified Test Suite
+```typescript
+// Test both modes with same test cases
+describe('Task Execution', () => {
+  [ExecutionMode.PROCESS_POOL, ExecutionMode.CONTAINER_AGENTIC].forEach(mode => {
+    describe(`in ${mode} mode`, () => {
+      it('should execute task successfully', async () => {
+        const provider = new UnifiedExecutionProvider({ executionMode: mode });
+        // Same test logic for both modes
+      });
+    });
+  });
+});
+```
+
+## Benefits of Transformation Approach
+
+### 1. **Zero Code Duplication**
+- Single implementation of core logic
+- Shared utilities and helpers
+- Common error handling
+
+### 2. **Backward Compatibility**
+- Existing APIs continue working
+- No breaking changes for users
+- Gradual migration possible
+
+### 3. **Reduced Maintenance**
+- One codebase to maintain
+- Shared bug fixes benefit both modes
+- Unified documentation
+
+### 4. **Lower Risk**
+- Can roll back to process mode
+- A/B testing capability
+- Incremental deployment
+
+### 5. **Cost Efficiency**
+- Reuse existing infrastructure
+- Shared monitoring and logging
+- Single CI/CD pipeline
+
+## Success Metrics
+
+### Code Quality Metrics
+- **Code Reuse**: > 70% shared between modes
+- **Duplication**: < 5% duplicate code
+- **Test Coverage**: > 90% for both modes
+- **Cyclomatic Complexity**: < 10 per method
+
+### Performance Metrics
+- **Mode Switch Time**: < 1 second
+- **Memory Overhead**: < 10% for dual mode
+- **API Latency**: No degradation from current
+- **Container Spawn**: < 10 seconds
+
+## Risk Mitigation
+
+### Technical Risks
+1. **Abstraction Overhead**: Keep interfaces minimal
+2. **Mode Confusion**: Clear configuration and logging
+3. **Testing Complexity**: Shared test infrastructure
+4. **Performance Impact**: Profile and optimize hot paths
+
+### Migration Risks
+1. **User Disruption**: Feature flags and gradual rollout
+2. **Data Loss**: Maintain session state during switch
+3. **Rollback Issues**: Keep process mode functional
+4. **Documentation**: Update incrementally
+
+## Configuration Examples
+
+### Process Pool Mode (Current Default)
+```yaml
+# config/worker.yaml
+executionMode: process_pool
+processPool:
+  maxProcesses: 5
+  processTimeout: 300000
+  claudeCodePath: /usr/local/bin/claude
+```
+
+### Container Agentic Mode (New)
+```yaml
+# config/worker.yaml
+executionMode: container_agentic
+container:
+  orchestrator: docker
+  image: claudecluster/agentic-worker:latest
+  registry: docker.io
+  resourceLimits:
+    memory: 4GB
+    cpu: 2
+    timeout: 3600
+```
+
+### Dual Mode (Migration Phase)
+```yaml
+# config/worker.yaml
+executionMode: ${EXECUTION_MODE:-process_pool}
+featureFlags:
+  enableContainerMode: true
+  allowModeOverride: true
+processPool:
+  # Process config
+container:
+  # Container config
+```
+
+## Official Anthropic Container Integration
+
+### Using Official Claude Code DevContainer
+We will use the **official Anthropic Claude Code Docker container** (https://github.com/anthropics/claude-code/blob/main/.devcontainer/Dockerfile) as the foundation for our agentic containers.
+
+#### Official Container Components
+```dockerfile
+# Base: Official Anthropic Claude Code container
+FROM ghcr.io/anthropics/claude-code:latest
+
+# Includes:
+- Node.js 20 runtime
+- Claude Code via npm (@anthropic-ai/claude-code)
+- Non-root user (node) with proper permissions
+- Development tools (git, zsh, vim, gh)
+- Network utilities (iptables, ipset)
+- /workspace as primary directory
+```
+
+#### Extending for Agentic Mode
+```typescript
+class ContainerProvider extends BaseProvider {
+  private readonly baseImage = 'ghcr.io/anthropics/claude-code:latest';
+  
+  async spawnContainer(task: Task): Promise<ContainerExecutor> {
+    // 1. Pull official Anthropic image
+    await this.docker.pull(this.baseImage);
+    
+    // 2. Create container with session extensions
+    const container = await this.docker.createContainer({
+      Image: this.baseImage,
+      Env: [
+        // Official Claude Code environment
+        'DEVCONTAINER=true',
+        'CLAUDE_CODE_VERSION=latest',
+        
+        // Agentic session variables
+        `SESSION_ID=${task.sessionId}`,
+        `REPO_URL=${task.repoUrl}`,
+        `CLAUDE_API_KEY=${this.config.claudeApiKey}`
+      ],
+      
+      // Use official workspace structure
+      WorkingDir: '/workspace',
+      User: 'node',
+      
+      // Lifecycle: container auto-removes when Claude exits
+      HostConfig: {
+        AutoRemove: true,
+        Memory: 4 * 1024 * 1024 * 1024,
+        NetworkMode: `session_${task.sessionId}`
+      }
+    });
+    
+    return new ContainerExecutor(container);
+  }
+}
+```
+
+### Container Lifecycle with Official Image
+
+#### Session Management Layer
+```javascript
+// Thin layer on top of official container
+class AgenticSessionManager {
+  async initialize() {
+    // 1. Clone repo using official git
+    await execSync(`git clone ${REPO_URL} /workspace/repo`);
+    
+    // 2. Start Claude Code from official npm package
+    this.claudeProcess = spawn('claude-code', [
+      '--workspace', '/workspace/repo',
+      '--session-id', SESSION_ID
+    ]);
+    
+    // 3. Container terminates when Claude exits
+    this.claudeProcess.on('exit', () => process.exit(0));
+  }
+}
+```
+
+### Benefits of Official Container
+
+1. **Guaranteed Compatibility** - Always works with latest Claude Code
+2. **Security by Default** - Anthropic's hardening included
+3. **Minimal Maintenance** - Inherits official updates
+4. **Optimized Performance** - 90% layer reuse from official image
+5. **Standard Environment** - Familiar to Claude Code users
+
+### Implementation with Official Container
+
+#### Phase 1: Registry Setup
+- [ ] Set up GitHub Container Registry
+- [ ] Create Dockerfile extending official image
+- [ ] Add thin agentic session layer
+- [ ] Publish versioned images
+
+#### Phase 2: Transform Container Provider
+```typescript
+// Existing ProcessPoolProvider stays unchanged
+class ProcessPoolProvider implements ExecutionProvider {
+  // Current implementation
+}
+
+// New ContainerProvider uses official image
+class ContainerProvider implements ExecutionProvider {
+  async getExecutor(task: Task): Promise<Executor> {
+    // Spawn container from official Anthropic image
+    const container = await this.spawnOfficialContainer(task);
+    return new ContainerExecutor(container);
+  }
+  
+  private async spawnOfficialContainer(task: Task) {
+    // Uses ghcr.io/anthropics/claude-code:latest
+  }
+}
+```
+
+### Deployment with Official Containers
+
+#### Docker Compose
+```yaml
+services:
+  orchestrator:
+    image: claudecluster/orchestrator:latest
+    environment:
+      - CONTAINER_IMAGE=ghcr.io/anthropics/claude-code:latest
+      - EXECUTION_MODE=${MODE:-container_agentic}
+```
+
+#### Kubernetes
+```yaml
+spec:
+  containers:
+  - name: claude-session
+    image: ghcr.io/anthropics/claude-code:latest
+    env:
+    - name: SESSION_ID
+      value: "{{ .SessionID }}"
+```
+
+### Cost Optimization
+
+- **Image Caching**: Official layers cached across sessions
+- **Pre-warming**: Keep official containers ready
+- **Layer Reuse**: 90% from official, 10% custom
+
+## Conclusion
+
+This transformation approach ensures we evolve ClaudeCluster into a true agentic platform without creating technical debt through code duplication. By building on our existing foundation, introducing abstractions, and leveraging the **official Anthropic Claude Code container**, we can support both execution modes with a single, maintainable codebase.
+
+The key is treating the transformation as an evolution of existing components rather than a parallel implementation, while using Anthropic's official container ensures compatibility, security, and minimal maintenance overhead.
+
+---
+Document Version: 3.0 (Transformation + Official Container)
+Last Updated: 2024-08-25
+Status: Draft

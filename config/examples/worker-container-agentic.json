@@ -1,0 +1,53 @@
+{
+  "environment": "production",
+  "logLevel": "info",
+  "version": "0.1.0",
+  "workerId": "worker-container-1",
+  "port": 3001,
+  "host": "0.0.0.0",
+  "maxConcurrentTasks": 15,
+  "taskTimeout": 300000,
+  "healthCheckInterval": 30000,
+  "workspaceDir": "/workspace",
+  "tempDir": "/tmp/claudecluster",
+  "enableMetrics": true,
+  "enableTracing": true,
+  
+  "executionMode": "container_agentic",
+  "enableAgenticMode": true,
+  "sessionTimeout": 3600000,
+  
+  "containerConfig": {
+    "image": "claudecluster/claude-agentic:latest",
+    "registry": "ghcr.io",
+    "networkName": "claudecluster-network",
+    "resourceLimits": {
+      "memory": 4294967296,
+      "cpu": 2048,
+      "timeout": 600
+    },
+    "securityOptions": [
+      "no-new-privileges:true"
+    ],
+    "autoRemove": true,
+    "enableHealthChecks": true
+  },
+  
+  "processPoolConfig": {
+    "maxProcesses": 3,
+    "minProcesses": 1,
+    "processTimeout": 300000,
+    "idleTimeout": 600000,
+    "healthCheckInterval": 30000
+  },
+  
+  "featureFlags": {
+    "allowModeOverride": true,
+    "enableResourceMonitoring": true,
+    "enablePerformanceMetrics": true,
+    "experimentalFeatures": [
+      "session-persistence",
+      "advanced-caching"
+    ]
+  }
+}

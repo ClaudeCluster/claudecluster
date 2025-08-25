@@ -45,6 +45,7 @@
   "dependencies": {
     "@claudecluster/core": "workspace:*",
     "@claudecluster/shared": "workspace:*",
+    "@claudecluster/worker": "workspace:*",
     "fastify": "^4.24.0",
     "@fastify/cors": "^8.4.0",
     "@fastify/websocket": "^8.3.0",

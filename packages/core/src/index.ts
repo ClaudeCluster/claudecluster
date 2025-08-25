@@ -20,5 +20,8 @@ export * from './types/communication.js';
 export * from './types/errors.js';
 export * from './validation/schemas.js';
 
+// Configuration Types
+export * from './config/execution.js';
+
 // Utility Types
 export * from './types/common.js';

@@ -44,6 +44,12 @@ export interface WorkerCapabilities {
   readonly operatingSystem: string;
   readonly architecture: string;
   readonly customCapabilities?: Record<string, boolean>;
+  readonly executionModes?: readonly string[];
+  readonly defaultExecutionMode?: string;
+  readonly supportsAgenticMode?: boolean;
+  readonly supportsContainerExecution?: boolean;
+  readonly sessionTimeout?: number;
+  readonly containerImage?: string;
 }
 
 /**
@@ -89,6 +95,24 @@ export interface WorkerConfig {
   readonly maxIdleTime: number; // milliseconds
   readonly environment?: Record<string, string>;
   readonly tags?: readonly string[];
+  readonly executionMode?: string;
+  readonly featureFlags?: Record<string, boolean>;
+  readonly processPool?: {
+    maxSize: number;
+    minSize: number;
+    idleTimeout: number;
+  };
+  readonly container?: {
+    image: string;
+    registry?: string;
+    networkName: string;
+    resourceLimits: {
+      memory: number;
+      cpu: number;
+    };
+  };
+  readonly workspaceDir?: string;
+  readonly sessionId?: string;
 }
 
 /**
