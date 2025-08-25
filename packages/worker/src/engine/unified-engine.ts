@@ -198,22 +198,19 @@ export class UnifiedTaskExecutionEngine extends EventEmitter {
       
     } catch (error) {
       const failedResult: TaskResult = {
-        id: randomUUID(),
         taskId: task.id,
         status: TaskStatus.FAILED,
-        result: {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-          artifacts: [],
-          metadata: {
-            executionMode,
-            sessionId,
-            executionId
-          }
+        output: undefined,
+        error: error instanceof Error ? error.message : String(error),
+        artifacts: [],
+        metrics: {
+          startTime: new Date(), // execution.startTime is private
+          endTime: new Date(),
+          duration: execution.getExecutionTime()
         },
-        executionTime: execution.getExecutionTime(),
-        completedAt: new Date(),
-        error: error instanceof Error ? error.message : String(error)
+        logs: [],
+        startedAt: new Date(),
+        completedAt: new Date()
       };
       
       this.emit('failed', task, error instanceof Error ? error : new Error(String(error)), failedResult);
@@ -252,8 +249,8 @@ export class UnifiedTaskExecutionEngine extends EventEmitter {
         status: TaskStatus.PENDING,
         dependencies: [],
         context: {
+          workingDirectory: './workspace',
           executionMode: ExecutionMode.CONTAINER_AGENTIC,
-          sessionId,
           repoUrl: options.repoUrl,
           environment: options.environment,
           resourceLimits: options.resourceLimits ? {

@@ -571,6 +571,7 @@ export class ConfigurationFactory {
         return {
           ...baseConfig,
           monitoring: {
+            enabled: baseConfig.monitoring?.enabled ?? true,
             ...baseConfig.monitoring,
             logging: {
               ...baseConfig.monitoring?.logging,
@@ -586,6 +587,7 @@ export class ConfigurationFactory {
         return {
           ...baseConfig,
           monitoring: {
+            enabled: baseConfig.monitoring?.enabled ?? true,
             ...baseConfig.monitoring,
             logging: {
               ...baseConfig.monitoring?.logging,
@@ -601,6 +603,7 @@ export class ConfigurationFactory {
         return {
           ...baseConfig,
           monitoring: {
+            enabled: baseConfig.monitoring?.enabled ?? true,
             ...baseConfig.monitoring,
             logging: {
               ...baseConfig.monitoring?.logging,
@@ -627,23 +630,13 @@ export class ConfigurationFactory {
     const config = this.createConfiguration(mode, environment);
     
     // Override with environment variables
-    if (process.env.PORT) {
-      config.port = parseInt(process.env.PORT, 10);
-    }
-    
-    if (process.env.HOST) {
-      config.host = process.env.HOST;
-    }
-    
-    if (process.env.MAX_CONCURRENT_TASKS) {
-      config.maxConcurrentTasks = parseInt(process.env.MAX_CONCURRENT_TASKS, 10);
-    }
-    
-    if (process.env.CLAUDE_API_KEY) {
-      config.claudeApiKey = process.env.CLAUDE_API_KEY;
-    }
-    
-    return config;
+    return {
+      ...config,
+      ...(process.env.PORT && { port: parseInt(process.env.PORT, 10) }),
+      ...(process.env.HOST && { host: process.env.HOST }),
+      ...(process.env.MAX_CONCURRENT_TASKS && { maxConcurrentTasks: parseInt(process.env.MAX_CONCURRENT_TASKS, 10) }),
+      ...(process.env.CLAUDE_API_KEY && { claudeApiKey: process.env.CLAUDE_API_KEY }),
+    };
   }
 }
 

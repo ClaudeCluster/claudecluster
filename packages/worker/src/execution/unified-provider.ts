@@ -6,10 +6,10 @@
  */
 
 import {
-  ExecutionProvider,
-  Executor,
+  type ExecutionProvider,
+  type Executor,
   ExecutionMode,
-  ProviderStats,
+  type ProviderStats,
   ExecutionProviderError,
   ErrorCodes
 } from './provider.js';
@@ -262,8 +262,9 @@ export class UnifiedExecutionProvider implements ExecutionProvider {
     }
 
     // 3. Use the configured default mode
-    if (this.isExecutionModeSupported(this.config.executionMode)) {
-      return this.config.executionMode;
+    const configMode = this.config.executionMode as ExecutionMode;
+    if (this.isExecutionModeSupported(configMode)) {
+      return configMode;
     }
 
     // 4. Fallback to any available mode

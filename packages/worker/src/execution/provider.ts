@@ -238,31 +238,7 @@ export interface ExecutionProviderFactory {
 /**
  * Provider configuration interface
  */
-export interface ProviderConfig extends WorkerConfig {
-  executionMode: ExecutionMode;
-  
-  // Process pool specific configuration
-  processPool?: {
-    maxProcesses: number;
-    processTimeout: number;
-    claudeCodePath: string;
-  };
-  
-  // Container specific configuration
-  container?: {
-    orchestrator: 'docker' | 'kubernetes' | 'ecs';
-    image: string;
-    registry: string;
-    resourceLimits: {
-      memory: number;
-      cpu: number;
-      diskSize?: number;
-    };
-    networkMode: string;
-    securityOptions: string[];
-    environmentVariables: Record<string, string>;
-  };
-}
+export type ProviderConfig = WorkerConfig;
 
 /**
  * Execution Provider Error types

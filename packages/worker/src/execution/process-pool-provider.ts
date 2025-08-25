@@ -8,11 +8,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   BaseProvider,
-  ExecutionProvider,
-  Executor,
+  type ExecutionProvider,
+  type Executor,
   ExecutionMode,
   ExecutorState,
-  ExecutorStatus,
+  type ExecutorStatus,
   ExecutorError,
   ErrorCodes
 } from './provider.js';
@@ -24,6 +24,7 @@ import {
   type ClaudeProcessResult
 } from '../process/index.js';
 import type { Task, TaskResult, WorkerConfig } from '@claudecluster/core';
+import { TaskStatus } from '@claudecluster/core';
 
 /**
  * Process Executor implementation
@@ -90,7 +91,7 @@ export class ProcessExecutor implements Executor {
       // Execute command in the process
       const processResult: ClaudeProcessResult = await this.process.executeCommand(
         command,
-        task.timeout || 300000 // 5 minute default timeout
+        task.context.timeout || 300000 // 5 minute default timeout
       );
 
       // Convert process result to task result
@@ -255,22 +256,20 @@ export class ProcessExecutor implements Executor {
     const isSuccess = processResult.exitCode === 0 && !processResult.error;
 
     return {
-      id: uuidv4(),
       taskId: task.id,
-      status: isSuccess ? 'completed' : 'failed',
-      result: {
-        success: isSuccess,
-        output: outputText,
-        artifacts: [], // Could extract files or other artifacts
-        metadata: {
-          executionTime: duration,
-          exitCode: processResult.exitCode,
-          processUptime: this.process.getUptime()
-        }
+      status: isSuccess ? TaskStatus.COMPLETED : TaskStatus.FAILED,
+      output: outputText,
+      error: processResult.error || undefined,
+      artifacts: [], // Could extract files or other artifacts
+      metrics: {
+        startTime: new Date(Date.now() - duration),
+        endTime: new Date(),
+        duration
       },
-      executionTime: duration,
-      completedAt: new Date(),
-      error: processResult.error ? new Error(processResult.error) : undefined
+      logs: outputText ? [outputText] : [],
+      exitCode: processResult.exitCode,
+      startedAt: new Date(Date.now() - duration),
+      completedAt: new Date()
     };
   }
 
@@ -296,19 +295,19 @@ export class ProcessPoolProvider extends BaseProvider {
     
     // Create process pool configuration from worker config
     const processConfig: ClaudeProcessConfig = {
-      claudeCodePath: config.processPool?.claudeCodePath,
-      workspaceDir: config.processPool?.workspaceDir || './workspace',
-      tempDir: config.processPool?.tempDir || './temp',
-      timeout: config.processPool?.processTimeout || 300000, // 5 minutes
-      maxMemoryMB: config.processPool?.maxMemoryMB || 1024, // 1GB
-      environment: config.processPool?.environment || {},
-      shell: config.processPool?.shell
+      claudeCodePath: '/usr/local/bin/claude',
+      workspaceDir: './workspace',
+      tempDir: './temp',
+      timeout: 300000, // 5 minutes
+      maxMemoryMB: 1024, // 1GB
+      environment: {},
+      shell: '/bin/bash'
     };
 
     // Initialize the process pool
     this.pool = new ClaudeProcessPool(
       processConfig,
-      config.processPool?.maxProcesses || 5
+      5 // Default max processes
     );
 
     // Set up pool event handlers
@@ -352,7 +351,7 @@ export class ProcessPoolProvider extends BaseProvider {
   /**
    * Release an executor back to the provider
    */
-  async release(executor: Executor): Promise<void> {
+  override async release(executor: Executor): Promise<void> {
     if (!(executor instanceof ProcessExecutor)) {
       throw new Error('Invalid executor type for ProcessPoolProvider');
     }
@@ -380,7 +379,7 @@ export class ProcessPoolProvider extends BaseProvider {
   /**
    * Clean up all resources
    */
-  async cleanup(): Promise<void> {
+  override async cleanup(): Promise<void> {
     await super.cleanup();
     
     try {
@@ -460,8 +459,8 @@ export class ProcessPoolProvider extends BaseProvider {
 
     // Estimate total available resources
     const poolStats = this.pool.getStats();
-    const maxProcesses = this.config.processPool?.maxProcesses || 5;
-    const maxMemoryPerProcess = this.config.processPool?.maxMemoryMB || 1024;
+    const maxProcesses = 5;
+    const maxMemoryPerProcess = 1024; // MB
     
     return {
       totalMemory: maxProcesses * maxMemoryPerProcess * 1024 * 1024, // Convert MB to bytes

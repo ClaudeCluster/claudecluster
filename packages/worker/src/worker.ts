@@ -5,6 +5,7 @@
 import { EventEmitter } from 'events';
 import type { Task, TaskResult, Worker, WorkerCapabilities, WorkerResources, WorkerHealth, WorkerMetrics, WorkerConfig as CoreWorkerConfig, WorkerTaskAssignment, TaskCategory } from '@claudecluster/core';
 import { WorkerStatus } from '@claudecluster/core';
+import { ExecutionMode } from '@claudecluster/core';
 import { WorkerServer, type WorkerServerConfig } from './server/index.js';
 import { TaskExecutionEngine } from './engine/index.js';
 import { ClaudeProcessPool } from './process/index.js';
@@ -219,14 +220,10 @@ export function createWorker(config: Partial<WorkerConfig> & { workerId: string 
     tags: config.tags || [],
     host: '0.0.0.0',
     port: 3001,
-    processConfig: {
-      workspaceDir: './workspace',
-      tempDir: './temp',
-      timeout: 300000, // 5 minutes
-      maxMemoryMB: 512,
-      environment: {}
-    },
     maxConcurrentTasks: 5,
+    executionMode: ExecutionMode.PROCESS_POOL,
+    sessionTimeout: 300000, // 5 minutes
+    enableAgenticMode: false,
     enableHealthCheck: true,
     enableMetrics: true,
     requestTimeout: 600000 // 10 minutes
